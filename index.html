@@ -95,7 +95,7 @@ textarea{resize:vertical;min-height:58px;line-height:1.35}
 .prevbar .warn{color:#9a4b00;font-size:13px}
 #scaleBox{overflow:hidden;-webkit-overflow-scrolling:touch}
 .scaler{transform-origin:0 0;width:1123px}
-.page{width:1123px;min-height:794px;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.18);padding:30px 34px}
+.page{width:1123px;min-height:794px;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.18);padding:30px 38px 23px}
 #printArea{position:absolute;left:-20000px;top:0;width:277mm;background:#fff}
 .modal{position:fixed;inset:0;background:rgba(10,25,45,.55);z-index:100;display:none;align-items:center;justify-content:center;padding:10px}
 .modal.on{display:flex}
@@ -142,7 +142,7 @@ textarea{resize:vertical;min-height:58px;line-height:1.35}
  .brand{font-size:16px;width:100%;order:-1}
 }
 @media print{
- @page{size:A4 landscape;margin:8mm}
+ @page{size:A4 landscape;margin:8mm 10mm 6mm 10mm}
  body{background:#fff}
  body>*:not(#printArea){display:none!important}
  #printArea{position:static;left:auto;display:block}
@@ -639,10 +639,10 @@ const CYCLE={
   ["Accélérer","la progression de la balle vers la cible adverse par des passes rapides","attaques rapides abouties"],
   ["Contre-attaquer","à 2 ou 3 joueurs pour arriver le plus tôt possible à la cible adverse","contre-attaques réussies"],
   ["Identifier","les espaces libres pour jouer vite vers la cible adverse","choix pertinents"],
-  ["Gérer","ses ressources pour maintenir la vitesse d’exécution pendant toute la rencontre","attaques rapides abouties"],
+  ["Se replier","rapidement en défense dès la perte de balle en gérant ses ressources pour maintenir la vitesse d’exécution","replis réussis"],
   ["Analyser","l’organisation défensive adverse pour faire le choix tactique le plus efficace","choix tactiques pertinents"],
   ["Construire","un choix tactique collectif (croisement, écran, renversement) face à une défense qui réduit l’espace de jeu","attaques abouties"],
-  ["Attaquer","une défense regroupée par des choix tactiques collectifs rapides","attaques abouties"],
+  ["Fixer","une défense regroupée pour libérer un partenaire en situation de tir par des choix tactiques collectifs rapides","tirs en position favorable"],
   ["Gagner","la rencontre par des choix tactiques collectifs fondés sur la vitesse d’exécution","actions efficaces"]]},
  [RV]:{seq:["Pertinence et efficacité de l’organisation collective.","Contribution et efficience individuelle du joueur dans l’organisation collective."],it:[
   ["Réaliser","les techniques de base (service, touche haute, manchette) avec efficacité pour récupérer et renvoyer la balle","gestes réussis"],
@@ -908,11 +908,11 @@ ed.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
  else if(t.dataset.rs!=null){const s=cur.phases.fond.situations;if(s.length===1)s[0]=newSit();else s.splice(+t.dataset.rs,1);changed(true)}
  else if(t.dataset.mv!=null){const s=cur.phases.fond.situations,i=+t.dataset.mv;[s[i-1],s[i]]=[s[i],s[i-1]];changed(true)}
  else if(t.dataset.sk){openSketch(t.dataset.sk)}
- else if(t.dataset.rmsk){const p=cur.phases[t.dataset.rmsk];p.schema="";p.sketch=null;changed(true)}});
+ else if(t.dataset.rmsk){const p=cur.phases[t.dataset.rmsk];p.schema="";p.sketch=null;p.schemaH=0;changed(true)}});
 
 function uploadImg(file,ph){if(!file)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const M=900,s=Math.min(1,M/Math.max(im.width,im.height));
  const c=document.createElement("canvas");c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
- cur.phases[ph].schema=c.toDataURL("image/jpeg",0.85);cur.phases[ph].sketch=null;changed(true);toast("Image insérée")};im.onerror=()=>toast("Image illisible");im.src=r.result};r.readAsDataURL(file)}
+ cur.phases[ph].schema=c.toDataURL("image/jpeg",0.85);cur.phases[ph].sketch=null;cur.phases[ph].schemaH=0;changed(true);toast("Image insérée")};im.onerror=()=>toast("Image illisible");im.src=r.result};r.readAsDataURL(file)}
 /* ===================== FICHE (aperçu / Word / impression) ===================== */
 /* Convertit les <col width> en attributs width sur la 1re ligne (compris par Word et LibreOffice) */
 function fixWidths(html){return html.replace(/<table style="([^"]*)">((?:<col width="[^"]+">)*)([\s\S]*?)<\/table>/g,(m,st,cols,body)=>{
@@ -923,21 +923,24 @@ function ficheHTML(f,word){let h=fixWidths(ficheRaw(f,word));
  if(word)h=h.replace(/<div style="margin-top:\d+px">/g,"<div>").replace(/(<td[^>]*>)([\s\S]*?)(<\/td>)/g,(m,a,b,c)=>a+"<div>"+(b||"&nbsp;")+"</div>"+c);
  return h}
 function ficheLen(f){const P=f.phases;return JSON.stringify([P.ini.contenu,P.fond.situations,P.fond.consSecu,P.fond.consOrga,P.fond.critQuant,P.fond.critQual,P.fin.contenu,f.otc,f.oti]).length}
-function ficheRaw(f,word){const L0=ficheLen(f),fs=word?(L0>3000?6.5:L0>2000?7:8):9;
+function ficheRaw(f,word){const fs=11; /* format de référence : Calibri 11 pt */
  const T=pal(f.aps,f.famille),D=T.ink,L=T.L,M=T.M,LN=T.line;
- const tb=`width:100%;border-collapse:collapse;table-layout:fixed;font-family:Calibri,Arial,sans-serif;font-size:${fs}pt;color:#111;-webkit-print-color-adjust:exact;print-color-adjust:exact;`;
+ const tb=`width:100%;border-collapse:collapse;table-layout:fixed;font-family:Calibri,Carlito,Arial,sans-serif;font-size:${fs}pt;line-height:1.2;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;`;
  const bd=`border:1px solid ${LN};`;
- const th=`${bd}background:${T.hd};color:${T.hf};font-weight:bold;text-align:center;vertical-align:middle;padding:${word?2:4}px 5px;font-size:${fs}pt;`;
- const lab=`${bd}background:${L};color:${D};font-weight:bold;padding:${word?2:4}px 6px;vertical-align:middle;font-size:${fs}pt;`;
- const td=`${bd}padding:${word?2:4}px 5px;vertical-align:top;font-size:${fs}pt;`;
+ const th=`${bd}background:${T.hd};color:${T.hf};font-weight:bold;text-align:center;vertical-align:middle;padding:1pt 3pt;font-size:${fs}pt;`;
+ const lab=`${bd}background:${L};color:${D};font-weight:bold;padding:1pt 3pt;vertical-align:middle;font-size:${fs}pt;`;
+ const td=`${bd}padding:1pt 3pt;vertical-align:top;font-size:${fs}pt;`;
  const tdc=`${td}vertical-align:middle;text-align:center;`;
- const ph=`${bd}background:${M};color:${D};font-weight:bold;text-align:center;vertical-align:middle;font-size:${word?7.5:8.5}pt;padding:4px 1px;letter-spacing:-.1px;`;
+ const ph=`${bd}background:${M};color:${D};font-weight:bold;text-align:center;vertical-align:middle;font-size:${fs}pt;padding:1pt;`;
  const am=`border:1px solid ${T.line}`;
  const gap=word?`<div style="font-size:4pt;line-height:4pt">&nbsp;</div>`:`<div style="height:5px;font-size:2pt;line-height:2pt">&nbsp;</div>`;
  const lbl=t=>`<b style="color:${D}">${t}</b>`;
  const P=f.phases,fond=P.fond;
  const comps=f.competences.filter(c=>c.on&&c.t.trim()).map(c=>"- "+esc(c.t.trim())).join("<br>");
- const img=p=>p.schema?`<img src="${p.schema}" width="${word?110:130}" style="width:100%;max-width:130px;height:auto;display:block;margin:0 auto">`:"";
+ /* Schéma composé (480 px de large) découpé en vignettes : la ligne peut continuer sur la page suivante à l’impression */
+ const img=p=>{if(!p.schema)return"";if(!word&&p.schemaH>434&&/^data:image\/jpeg/.test(p.schema)){let o="";for(let y=0;y<p.schemaH;y+=354){const h=Math.min(354,p.schemaH-y);
+   o+=`<div style="width:100%;max-width:130px;margin:0 auto 2px;overflow:hidden;aspect-ratio:480/${h}"><img src="${p.schema}" style="width:100%;height:auto;display:block;margin-top:-${(y/480*100).toFixed(3)}%"></div>`}return o}
+  return `<img src="${p.schema}" width="${word?110:130}" style="width:100%;max-width:130px;height:auto;display:block;margin:0 auto">`};
  const sits=fond.situations.filter(s=>Object.values(s).some(v=>String(v).trim()));
  const multi=sits.length>1;
  let cont="";
@@ -961,15 +964,15 @@ function ficheRaw(f,word){const L0=ficheLen(f),fs=word?(L0>3000?6.5:L0>2000?7:8)
 <td style="${lab}${am}">Date</td><td style="${td}${am}vertical-align:middle">${esc(fmtDate(f.date))}</td></tr></table>${gap}
 <table style="${tb}"><col width="20%"><col width="12%"><col width="11%"><col width="9%"><col width="8%"><col width="11%"><col width="29%">
 <tr><td style="${th}">Module d’enseignement</td><td style="${th}">Famille d’APS</td><td style="${th}">APS support</td><td style="${th}">Niveau scolaire</td><td style="${th}">N° de séance</td><td style="${th}">Effectif (G / F)</td><td style="${th}">Matériel</td></tr>
-<tr${word?"":` style="height:32px"`}><td style="${tdc}">${esc(f.module)}</td><td style="${tdc}">${esc(famName(f))}</td><td style="${tdc}">${esc(f.aps)}</td><td style="${tdc}">${esc(f.niveau)}</td><td style="${tdc}font-weight:bold;font-size:11pt">${esc(f.seance)}</td><td style="${tdc}">G : ${esc(f.effG)}&nbsp;&nbsp; F : ${esc(f.effF)}</td><td style="${td}vertical-align:middle">${esc(f.materiel)}</td></tr></table>${gap}
+<tr${word?"":` style="height:32px"`}><td style="${tdc}">${esc(f.module)}</td><td style="${tdc}">${esc(famName(f))}</td><td style="${tdc}">${esc(f.aps)}</td><td style="${tdc}">${esc(f.niveau)}</td><td style="${tdc}font-weight:bold;font-size:12pt">${esc(f.seance)}</td><td style="${tdc}">G : ${esc(f.effG)}&nbsp;&nbsp; F : ${esc(f.effF)}</td><td style="${td}vertical-align:middle">${esc(f.materiel)}</td></tr></table>${gap}
 <table style="${tb}"><col width="23%"><col width="77%">
 <tr><td style="${lab}">Objectif terminal d’intégration (OTI)</td><td style="${td}">${nl(f.oti)}</td></tr>
 <tr><td style="${lab}">Objectif terminal du cycle (OTC)</td><td style="${td}">${nl(f.otc)}</td></tr>
 <tr><td style="${lab}">Compétences visées</td><td style="${td}">${comps}</td></tr>
 <tr><td style="${lab}">Objectif de la séquence</td><td style="${td}">${nl(f.objSeq)}</td></tr>
 <tr><td style="${lab}">Objectif de la séance</td><td style="${td}font-weight:bold">${esc(objSentence(f))}</td></tr></table>${gap}
-<table style="${tb}"><col width="7%"><col width="5%"><col width="11%"><col width="38%"><col width="13%"><col width="13%"><col width="13%">
-<tr><td style="${th}">Phase</td><td style="${th}">Durée</td><td style="${th}">But</td><td style="${th}">Contenu (situations, conditions et critères de réalisation, variables)</td><td style="${th}">Consignes</td><td style="${th}">Critères de réussite</td><td style="${th}">Schématisation</td></tr>
+<table style="${tb}"><col width="9%"><col width="6%"><col width="11%"><col width="35%"><col width="13%"><col width="13%"><col width="13%">
+<tr>${["Phase","Durée","But","Contenu (situations, conditions et critères de réalisation, variables)","Consignes","Critères de réussite","Schématisation"].map(x=>`<td style="${th}font-size:12pt">${x}</td>`).join("")}</tr>
 ${row("Initiale",P.ini,nl(P.ini.contenu),nl(P.ini.consignes),nl(P.ini.criteres),word?0:60)}
 ${row("Fondamentale",fond,cont,cons,crit,word?0:150)}
 ${row("Finale",P.fin,nl(P.fin.contenu),nl(P.fin.consignes),nl(P.fin.criteres),word?0:50)}
@@ -978,8 +981,8 @@ ${row("Finale",P.fin,nl(P.fin.contenu),nl(P.fin.consignes),nl(P.fin.criteres),wo
 
 let pvT=null;function schedPreview(){clearTimeout(pvT);pvT=setTimeout(renderPreview,150)}
 function renderPreview(){const pg=$("#page");pg.innerHTML=ficheHTML(cur);fitPreview();
- const pa=$("#printArea");pa.style.zoom="1";pa.style.width="279mm";pa.innerHTML=pg.innerHTML;const over=pa.getBoundingClientRect().height>188*96/25.4+1;pa.innerHTML="";
- $("#pwarn").textContent=over?"ℹ Contenu dense : l’impression et le PDF sont réduits automatiquement pour tenir sur une page.":""}
+ const pa=$("#printArea");pa.style.zoom="1";pa.style.width="279mm";pa.innerHTML=pg.innerHTML;pa.style.width="277mm";const hmm=pa.getBoundingClientRect().height*25.4/96;pa.innerHTML="";
+ const np=Math.max(1,Math.ceil(hmm/190));$("#pwarn").textContent=np>1?`ℹ Format de référence (Calibri 11 pt, A4 paysage) : cette fiche s’imprime sur ${np} pages.`:""}
 let realSize=false;
 function fitPreview(){const box=$("#scaleBox"),sc=$("#scaler"),pg=$("#page");const w=box.clientWidth;if(!w)return;const s=realSize?1:Math.min(1,w/1123);box.style.overflowX=realSize?"auto":"hidden";sc.style.transform=`scale(${s})`;box.style.height=(pg.offsetHeight*s)+"px"}
 window.addEventListener("resize",fitPreview);
@@ -1023,7 +1026,7 @@ function afterSwitch(msg){SK.otherVerb=false;persist();renderList();renderEditor
 
 /* Bandeau de titre (Moderne clair, couleur de l’APS) */
 function ficheBanner(f,word,T,tb){const TT="FICHE DE PRÉPARATION D’UNE SÉANCE D’EPS",ico=(c,px)=>word?"":`<span style="display:inline-block;vertical-align:middle;width:${px}px;height:${px}px;margin-right:8px">${apsIcon(f.aps,f.famille,c)}</span>`;
- return `<table style="${tb}"><tr><td style="border-bottom:3px solid ${T.base};color:${T.ink};font-weight:bold;text-align:center;font-size:${word?12:15}pt;padding:${word?3:6}px;letter-spacing:.4px">${ico(T.base,22)}<span style="vertical-align:middle">${TT}</span></td></tr></table>`}
+ return `<table style="${tb}"><tr><td style="border-bottom:3px solid ${T.base};color:${T.ink};font-weight:bold;text-align:center;font-size:16pt;line-height:1.2;padding:0 0 2pt">${ico(T.base,22)}<span style="vertical-align:middle">${TT}</span></td></tr></table>`}
 /* ===================== OUTIL DE SCHÉMA ===================== */
 const SK={ph:null,bg:"volley",items:[],tool:"A",drag:null,otherVerb:false};
 const skc=$("#skc"),sx=skc.getContext("2d"),W=600,H=400;
@@ -1087,11 +1090,11 @@ function openSketch(ph){const p=cur.phases[ph],s=p.sketch;SK.ph=ph;SK.bg=s?s.bg:
  $("#skBg").value=SK.bg;$("#skPh").textContent={ini:"phase initiale",fond:"phase fondamentale",fin:"phase finale"}[ph];$("#skModal").classList.add("on");skDraw()}
 function closeSketch(){$("#skModal").classList.remove("on");SK.drag=null}
 $("#skX").onclick=closeSketch;$("#skCancel").onclick=closeSketch;
-$("#skOk").onclick=()=>{const p=cur.phases[SK.ph];skDraw();p.schema=skc.toDataURL("image/png");p.sketch={bg:SK.bg,items:SK.items};closeSketch();changed(true);toast("Schéma inséré dans la fiche")};
+$("#skOk").onclick=()=>{const p=cur.phases[SK.ph];skDraw();p.schema=skc.toDataURL("image/png");p.sketch={bg:SK.bg,items:SK.items};p.schemaH=0;closeSketch();changed(true);toast("Schéma inséré dans la fiche")};
 
 /* ===================== EXPORTS ===================== */
 function wordDoc(f){
- const pg="size:841.9pt 595.3pt;mso-page-orientation:landscape;margin:22pt 26pt 18pt 26pt";
+ const pg="size:841.9pt 595.3pt;mso-page-orientation:landscape;margin:22.7pt 28.35pt 17pt 28.35pt";
  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta charset="utf-8"><meta name="ProgId" content="Word.Document"><title>${esc(ficheTitle(f))}</title>
 <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
@@ -1104,11 +1107,8 @@ p,div{margin:0}
 table{border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0}
 </style></head><body><div class="WordSection1">${ficheHTML(f,true)}</div></body></html>`}
 $("#bWord").onclick=()=>exportDocx(cur);
-function preparePrint(){const pa=$("#printArea");pa.innerHTML=ficheHTML(cur);
- const mm=96/25.4,availH=188*mm,W0=279;let z=1;
- for(let i=0;i<6;i++){pa.style.zoom=String(z);pa.style.width=(W0/z)+"mm";const bh=pa.getBoundingClientRect().height;
-  if(bh<=availH+1)break;z=Math.max(.5,z*availH/bh*0.995);}
- return pa}
+/* Impression au format de référence : taille réelle (Calibri 11 pt), sans réduction ; la fiche continue sur la page suivante si besoin */
+function preparePrint(){const pa=$("#printArea");pa.innerHTML=ficheHTML(cur);pa.style.zoom="1";pa.style.width="277mm";return pa}
 $("#bPrint").onclick=()=>doPrint(preparePrint,fileStem(cur)+"_imprimable.html",()=>cycleHTMLOne(cur));
 window.addEventListener("beforeprint",()=>{if(!PRINT_CYCLE)preparePrint()});window.addEventListener("afterprint",()=>{PRINT_CYCLE=false});
 function importJSONText(txt){try{const d=JSON.parse(txt);
@@ -1289,7 +1289,7 @@ ed.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
  else if(t.id==="togPlan"){SK.showPlan=!SK.showPlan;renderEditor()}
  else if(t.id==="genCycle"){const len=parseInt(cur.cycleLen)||10;ask(`Créer les ${len} fiches du cycle (séances 1 à ${len}) avec le même en-tête ?`,()=>{
   let first=null;for(let n=1;n<=len;n++){const c=normalize(JSON.parse(JSON.stringify(cur)));c.id=uid();c.updated=Date.now()+n;c.bilan="";c.phases.fond=defPhases().fond;
-   ["ini","fond","fin"].forEach(k=>{c.phases[k].schema="";c.phases[k].sketch=null});applyPlan(c,n);fiches.push(c);if(n===1)first=c}
+   ["ini","fond","fin"].forEach(k=>{c.phases[k].schema="";c.phases[k].sketch=null;c.phases[k].schemaH=0});applyPlan(c,n);fiches.push(c);if(n===1)first=c}
   cur=first;afterSwitch(len+" fiches du cycle créées")},"Créer les fiches")}
  else if(t.id==="goCheck"){const c=$("#cohCard");if(c)c.scrollIntoView({behavior:"smooth"})}});
 
@@ -1556,12 +1556,81 @@ const COMPCAT=[
  {k:"env",re:/environnement|milieu|matériel|espace|didactique|contexte|informations/i,ev:/matériel|espace/i,orga:"Installer et ranger le matériel par groupe ; utiliser tout l’espace attribué.",qual:"Utilisation adaptée de l’espace et du matériel."},
  {k:"conn",re:/connaiss|objectifs visés|critères de réussite|savoir|scientifique/i,ev:/critères|expliqu/i,orga:"L’enseignant annonce l’objectif et les critères de réussite ; les élèves les reformulent.",qual:"Connaissance des critères de réussite (les élèves savent les expliquer)."}];
 function compCats(t){return COMPCAT.filter(c=>c.re.test(t))}
+/* ===================== ENRICHISSEMENT DES BANQUES (inspiré des fiches modèles de l’enseignant) =====================
+   Champs facultatifs d’un gabarit : q = critère de réussite quantitatif propre à la situation,
+   o = consigne d’organisation, sec = consigne de sécurité.
+   {q10} {q5} {q4} {pct} = seuils de réussite calculés à partir du niveau (PROFIL.ratio). */
+(function(){
+ const P=(tag,arr)=>{SC_T[tag].unshift(...arr)}; /* placés en tête : proposés en premier */
+ P("conservation",[
+  {p:1,t:"Passes dans le cercle",c:"La classe est répartie en 4 groupes ; chaque groupe forme un cercle de 8 m avec 2 défenseurs au centre. Les joueurs du cercle se font des passes sans que les défenseurs touchent {B} ; le passeur intercepté prend la place du défenseur.",s:"Un seul défenseur au centre ; agrandir le cercle.",x:"Passe à une main imposée ; réduire le cercle.",sk:"pass",r:1,
+   q:"Réussir au moins {q10} passes sur 10 sans interception.",o:"Chaque groupe garde son cercle ; le défenseur change toutes les 10 passes."},
+  {p:2,t:"Passe à dix",c:"Le terrain est divisé en trois sous-espaces ; {R2} dans chaque espace. L’équipe qui enchaîne 10 passes sans perdre {B} pose la dixième passe dans un cerceau et marque 1 point ; 6 minutes par rencontre.",s:"Réduire à 6 passes ; joker offensif.",x:"Passe en retour au passeur interdite ; réduire l’espace.",sk:"pass",r:2,
+   q:"Réaliser au moins 2 séries de 10 passes en 6 minutes.",o:"Compter les passes à voix haute ; les équipes qui attendent observent et comptent les points."}]);
+ P("progression",[
+  {p:1,t:"Va-et-vient en passes",c:"La classe est répartie sur les deux lignes de fond. Par vagues de 3, les élèves traversent le terrain en se faisant des passes en course, terminent par un {T} vers {C} et reviennent par le côté.",s:"Dribble autorisé ; distance réduite.",x:"4 passes maximum pour traverser ; un défenseur passif au milieu.",sk:"progress",r:1,
+   q:"Atteindre {C} en 4 passes maximum, {q5} fois sur 5.",o:"La vague suivante part quand la précédente a franchi la ligne médiane."},
+  {p:2,t:"Progression par postes",c:"Des plots repèrent les postes dans le camp adverse. L’équipe de {a} monte {B} par des passes, chaque joueur rejoint son poste, puis l’équipe réalise 5 à 7 passes avant de tenter un {T} ; {R2} dans un deuxième temps.",s:"Sans défenseur ; dribble autorisé.",x:"Défense complète (égalité numérique) ; 10 passes au plus.",sk:"occup",r:2,
+   q:"Réussir au moins {q5} passes sur 5 depuis son poste.",o:"Commencer à compter les passes lorsque {B} dépasse la ligne médiane ; chacun passe depuis son poste."}]);
+ P("demarquage",[
+  {p:1,t:"Porteur et non-porteur",c:"Deux colonnes face à {C} : le porteur de balle (PB) dribble, le non-porteur (NPB) se démarque en avant, reçoit en mouvement et termine par un {T} ; changement de colonne après chaque passage.",s:"Défenseur absent ; passe à l’arrêt.",x:"Un défenseur passif puis actif sur le NPB.",sk:"demarq",r:1,
+   q:"Recevoir {B} en mouvement {q4} fois sur 4.",o:"Le passage suivant part quand le tir est terminé ; récupérer {B} avant de revenir en colonne."}]);
+ P("tir",[
+  {p:1,t:"Créer le surnombre",c:"Quatre groupes devant la ligne médiane : par échange de balle, les attaquants fixent les adversaires pour mettre un partenaire seul face à {C} (1 contre 0) qui tente le {T}.",s:"Défenseurs passifs.",x:"Défenseurs actifs ; temps d’attaque limité à 8 s.",sk:"tir",r:1,
+   q:"Mettre un partenaire en situation de tir {q5} fois sur 5.",o:"Changement de rôle attaquants / défenseurs après 5 attaques."},
+  {p:2,t:"Fixer pour libérer",c:"Le terrain est divisé en deux sur la largeur ; 3 contre 3 dans chaque demi-terrain. Par fixation et passe, libérer un attaquant dans {Z} qui tente le {T}.",s:"3 contre 2.",x:"Tir seulement après une fixation réussie ; défense individuelle.",sk:"tir",r:2,
+   q:"Fixer son défenseur et libérer un partenaire {q5} fois sur 5.",o:"Chaque équipe réalise 5 attaques puis passe en défense."}]);
+ P("defense",[
+  {p:2,t:"Défense organisée",c:"Deux équipes par demi-terrain, {R2} : la défense s’organise pour interdire l’accès direct à {C}. Chaque fois qu’une équipe perd 3 fois {B}, les équipes changent de statut (attaque / défense).",s:"Augmenter le nombre de défenseurs.",x:"Égalité numérique puis jeu sur tout le terrain.",sk:"def",r:2,
+   q:"Récupérer au moins 3 balles sur 10 attaques adverses.",o:"10 passages minimum pour chaque équipe ; les équipes qui attendent arbitrent."}]);
+ P("montee",[
+  {p:1,t:"Signal et repli",c:"Le terrain est divisé en 5 couloirs. Cinq élèves progressent vers {C} en se faisant des passes ; au signal, ils posent {B} au sol et reviennent défendre leur cible.",s:"Signal donné tôt ; distance réduite.",x:"Au signal, une équipe adverse attaque aussitôt (5 contre 5).",sk:"trans",r:1,
+   q:"Revenir derrière la ligne médiane en moins de 5 s, {q5} fois sur 5.",o:"Chaque élève reste dans son couloir ; les groupes suivants attendent derrière la ligne de fond."}]);
+ /* Critères quantitatifs par défaut pour les gabarits qui n’en ont pas */
+ window.SIT_Q={
+  [SC]:{conservation:"Réussir au moins {q10} passes sur 10 sans perte de balle.",demarquage:"Recevoir {B} dans un espace libre {q5} fois sur 5.",progression:"Atteindre {Z} avec {B} {q5} fois sur 5.",tir:"Réussir au moins {q10} tirs cadrés sur 10.",defense:"Récupérer au moins 3 balles sur 10 attaques adverses.",montee:"Terminer au moins {q10} contre-attaques sur 10 par un tir.",collectif:"Réaliser le projet annoncé {q5} fois sur 5."},
+  [RV]:{service:"Réussir au moins {q10} services sur 10 dans le terrain adverse.",reception:"Réussir au moins {q10} réceptions sur 10 vers la zone du passeur.",passe:"Réussir au moins {q10} passes hautes sur 10 exploitables.",renvoi:"Renvoyer la balle dans le terrain adverse {q10} fois sur 10.",deplacement:"Se placer sous la balle avant le contact {q5} fois sur 5.",organisation:"Construire au moins {q10} renvois en 3 touches sur 10.",defense:"Récupérer au moins {q10} balles sur 10."},
+  [AT]:{technique:"{pct} des élèves réalisent le geste correctement.",rythme:"Au moins 4 passages par élève sans temps d’arrêt.",effort:"Maintenir la même performance sur {q4} essais sur 4.",perf:"Améliorer sa performance initiale sur {q4} essais sur 4.",defi:"Chaque élève réalise ses essais et note sa performance.",collectif:"Tous les élèves de l’équipe réalisent leurs passages."},
+  [GY]:{elements:"Réussir au moins {q5} éléments sur 5.",rotation:"Réussir l’élément avec parade {q5} fois sur 5.",equilibre:"Tenir l’équilibre 3 secondes {q4} fois sur 4.",liaison:"Enchaîner au moins {q5} liaisons sur 5 sans arrêt.",projet:"Réaliser tous les éléments prévus dans le projet.",presentation:"Présenter l’enchaînement sans arrêt ni chute.",juge:"Les juges donnent une note proche (± 1 point) de celle de l’enseignant."}};
+ /* ---------- Athlétisme : distances garçons / filles et situations inspirées ---------- */
+ const V=BANK["Course de vitesse"];V.distG=["50 m","60 m","80 m"];V.distF=["40 m","50 m","60 m"];
+ V.spe.push("Gammes sur 20 m ; départs debout, assis et accroupis au signal sur 15 m (G) / 10 m (F).");
+ V.iniCons="Maintenir une posture stable au départ ; être prêt à réagir dès le signal ; respecter son couloir pour éviter les collisions.";
+ V.sits.unshift(
+  {tags:["technique","rythme"],t:"Réaction aux signaux",c:"Deux colonnes repérées par des plots de couleur différente. L’enseignant montre une couleur (signal visuel) puis frappe dans les mains (signal auditif) : la colonne concernée part en sprint jusqu’à la ligne d’arrivée (20 m G / 15 m F).",r:"Réagir dès le signal ; pousser fort sur les deux jambes ; regard vers l’avant.",s:"Signal unique et annoncé.",x:"Varier les signaux ; départ en duel par 2.",sk:"depart",
+   q:"Partir dès le signal de sa couleur, {q4} fois sur 4.",o:"Retour en marchant par l’extérieur des couloirs après chaque course.",sec:"Attention aux autres coureurs au moment du retour."},
+  {tags:["technique"],t:"Départs variés",c:"Piste de 20 m (G) / 15 m (F), 4 couloirs dans chaque sens : départs debout, assis puis accroupis au signal ; les élèves alternent les positions à chaque passage.",r:"Être immobile avant le signal ; se redresser progressivement ; premières foulées courtes et rapides.",s:"Départ debout uniquement.",x:"Départ accroupi réglementaire ; réduire le temps de réaction.",sk:"depart",
+   q:"Réaliser un départ réglementaire {q5} fois sur 5.",o:"Chaque vague de 4 part au signal du starter ; la vague suivante se prépare derrière la ligne."},
+  {tags:["technique","rythme"],t:"Passage sous l’élastique",c:"Piste de 30 m : un élastique tendu à 1,40 m (G) / 1,20 m (F) du sol est placé à 5 m de la ligne de départ. Les élèves partent au signal, passent sous l’élastique sans trop ralentir, se redressent rapidement et sprintent jusqu’à l’arrivée.",r:"Rester bas au départ ; redressement progressif du buste ; accélération continue jusqu’à la ligne.",s:"Élever l’élastique.",x:"Abaisser l’élastique ; éloigner l’élastique de la ligne de départ.",sk:"course",
+   q:"Franchir l’élastique et atteindre l’arrivée en moins de 5 s, {q5} fois sur 5.",o:"Revenir calmement au bord de la piste après chaque course.",sec:"Les élèves qui tiennent l’élastique le lâchent en cas de contact."});
+ const L=BANK["Saut en longueur"];L.distG=["10 m","12 m","15 m"];L.distF=["8 m","10 m","10 m"];
+ L.iniCons="Travailler individuellement ; s’organiser sur le passage ; regarder le sautoir avant de s’élancer.";
+ L.spe.push("Foulées bondissantes sur des cerceaux au sol ; sauts pieds joints au-dessus de lattes posées sur des plots.");
+ L.sits.unshift(
+  {tags:["rythme"],t:"Course d’élan accélérée",c:"Sur une distance de {dG} (G) / {dF} (F) repérée par un plot au milieu, les élèves accélèrent progressivement en arrivant au plot et finissent par un saut vers l’avant dans la fosse.",r:"Accélération progressive ; pas de piétinement avant l’appel ; impulsion sur un seul pied.",s:"Distance réduite ; plot plus proche de la fosse.",x:"Sans plot et chronométré : parcourir la distance en un minimum de temps avant de sauter.",sk:"saut",
+   q:"5 passages pour chaque élève sans piétinement.",o:"Deux groupes (garçons / filles) ; chaque groupe travaille selon ses propres capacités."},
+  {tags:["technique"],t:"Franchir l’élastique",c:"Un élastique tenu par deux élèves aux deux extrémités de la fosse est placé à 2 m (G) / 1,50 m (F) de la planche. Après une course d’élan, l’élève cherche la hauteur à l’impulsion pour franchir l’élastique sans le toucher.",r:"Appel sur un seul pied ; genou libre et bras vers le haut ; réception sur les deux pieds.",s:"Abaisser l’élastique ; élan réduit.",x:"Élever l’élastique ; l’éloigner de la planche.",sk:"saut",
+   q:"Franchir l’élastique sans le toucher {q4} fois sur 4.",o:"Rotation des élèves qui tiennent l’élastique après chaque série.",sec:"Lâcher l’élastique en cas de contact avec le sauteur."},
+  {tags:["perf","defi"],t:"Zones de points",c:"Le sautoir est divisé en 3 zones : A = 1 point, B = 2 points, C = 3 points. Après une course d’élan, chaque élève cherche à atteindre la zone la plus loin ; l’observateur annonce le score.",r:"Course accélérée ; impulsion vers le haut et l’avant ; réception loin devant.",s:"Zones plus proches de la planche.",x:"Élastique à franchir avant la zone ; zones plus éloignées.",sk:"saut",
+   q:"Atteindre la zone B ou C, {q4} fois sur 4.",o:"Travail en binôme : l’un saute, l’autre observe et annonce le score, puis on inverse."},
+  {tags:["technique"],t:"Ballon suspendu",c:"Deux ballons sont suspendus sur un fil tenu par deux élèves au-dessus de la fosse. Après une course d’élan et un appel sur tremplin, l’élève touche le ballon à deux mains pendant la suspension puis ramène les jambes tendues vers l’avant pour la réception.",r:"Ouverture du corps pendant la suspension ; fermeture rapide (le ramené) ; jambes tendues à la réception.",s:"Abaisser les ballons.",x:"Élever les ballons ; supprimer le tremplin.",sk:"saut",
+   q:"Toucher le ballon 2 fois sur 4 et se réceptionner sur les deux pieds.",o:"Les élèves dispensés tiennent le fil ; rotation après chaque série."},
+  {tags:["technique","perf"],t:"Réception dans le cerceau",c:"Après un élan réduit, réaliser un saut vers l’avant et le haut et se réceptionner sur les deux pieds dans un cerceau posé dans la fosse ; le bassin vient prendre la place des pieds.",r:"Réception pieds joints ; bras vers l’avant ; genoux fléchis pour amortir ; tomber vers l’avant.",s:"Cerceau proche ; élan réduit.",x:"Éloigner le cerceau ; course progressivement accélérée.",sk:"saut",
+   q:"{pct} des élèves se réceptionnent sur les deux pieds.",o:"Ratisser le sable après chaque passage ; le passage suivant attend le signal."},
+  {tags:["perf","collectif"],t:"Observation en binôme",c:"Travail en binôme : l’un saute, l’autre observe et l’inverse. Deux essais successifs observés avec une fiche : course (accélérée / lente), saut (vers le haut et l’avant / vers l’avant), réception (sur deux pieds / un seul pied) ; 2 points pour une bonne réalisation, 1 point pour une réalisation moyenne.",r:"Courir vite ; sauter vers l’avant et le haut ; se réceptionner sur les deux pieds.",s:"Un seul critère observé.",x:"Trois essais ; mesure de la performance.",sk:"saut",
+   q:"{pct} des élèves courent en accélération progressive et se réceptionnent sur les deux pieds.",o:"Observateurs : se concentrer sur le sauteur et annoncer le score."});
+ /* Consignes d’échauffement propres à l’APS (sports collectifs) */
+ if(BANK.Basketball)BANK.Basketball.iniCons="Passes précises ; dribbler sans regarder le ballon (main droite / main gauche).";
+ if(BANK.Handball)BANK.Handball.iniCons="Passe à une main, réception à deux mains ; dribble tête haute.";
+ /* Ateliers en rotation pour l’athlétisme (structure des fiches modèles) */
+ window.AT_ATELIERS="Travail en ateliers : la classe est répartie en groupes ; chaque groupe travaille selon ses propres capacités, puis rotation sur les ateliers.";
+})();
 /* ===================== GÉNÉRATEUR AUTOMATIQUE DE FICHE ===================== */
 const AUTO_APS=Object.keys(BANK);
 const FAMT_POUR={[SC]:SC_POUR,[RV]:RV_POUR};
 const AT_GAIN={course:["réduire son temps de course","en réduisant son temps de course"],saut:["élargir l’espace franchi","en élargissant l’espace franchi"],lancer:["augmenter la distance de son lancer","en augmentant la distance de son lancer"]};
 function atKind(aps){return /Saut/.test(aps)?"saut":/Lancer/.test(aps)?"lancer":"course"}
-const VTAG={[SC]:{"conserver":"conservation","se démarquer":"demarquage","se déplacer":"demarquage","progresser":"progression","accélérer":"progression","marquer":"tir","défendre":"defense","récupérer":"defense","changer":"montee","contre-attaquer":"montee","occuper":"collectif","construire":"collectif","maîtriser":"collectif","analyser":"collectif","gérer":"collectif"},
+const VTAG={[SC]:{"conserver":"conservation","fixer":"tir","se replier":"montee","se démarquer":"demarquage","se déplacer":"demarquage","progresser":"progression","accélérer":"progression","marquer":"tir","défendre":"defense","récupérer":"defense","changer":"montee","contre-attaquer":"montee","occuper":"collectif","construire":"collectif","maîtriser":"collectif","analyser":"collectif","gérer":"collectif"},
  [RV]:{"servir":"service","défendre":"defense","récupérer":"defense","réceptionner":"reception","passer":"passe","faire progresser":"passe","renvoyer":"renvoi","orienter":"renvoi","marquer":"renvoi","se déplacer":"deplacement","se placer":"deplacement","identifier":"deplacement"}};
 function tagOf(fam,txt){const t=txt.toLowerCase();const vt=VTAG[fam];if(vt){const k=Object.keys(vt).sort((a,b)=>b.length-a.length).find(v=>t.startsWith(v+" "));
   if(k&&!(fam===SC&&k==="conserver"&&/chang|contre-attaq/.test(t))&&!(fam===RV&&/3 touches|2 touches/.test(t)&&k!=="servir"))return vt[k]}
@@ -1583,9 +1652,12 @@ function ctxOf(f,bank,v){const P=PROFIL[f.niveau],niv=f.niveau,ctx={B:bank.B||""
  if(bank.fam===SC){const m=(P.sc.match(/(\d+)/)||[0,3]);const a=Math.min(+m[1],bank.maxA);Object.assign(ctx,{a,R1:`${a} contre ${Math.max(1,a-2)}`,R2:`${a} contre ${a-1}`,R3:`${a} contre ${a}`})}
  if(bank.fam===RV){const a=+(P.rv.match(/(\d+)/)||[0,2])[1];Object.assign(ctx,{a,R1:"par 2",R2:a>2?`${a-1} contre ${a-1}`:P.rv,R3:a>2?`${a} contre ${a}`:P.rv})}
  if(bank.dist)ctx.dist=bank.dist[Math.min(lvlIdx(niv),bank.dist.length-1)]||"";
+ if(bank.distG){const li=Math.min(lvlIdx(niv),bank.distG.length-1);ctx.dG=bank.distG[li];ctx.dF=bank.distF[li];if(bank.dist&&ctx.dist)ctx.dist=`${ctx.dG} (G) / ${ctx.dF} (F)`}
+ {const [ra,rb]=P.ratio.split("/").map(Number),r=ra/rb;Object.assign(ctx,{q10:String(Math.round(r*10)),q5:String(Math.round(r*5)),q4:String(Math.min(4,Math.max(2,Math.round(r*4+0.2)))),pct:Math.round(r*10)*10+" %"})}
  if(bank.fam===GY){const E=gyElts(niv,v||0);Object.assign(ctx,{compo:GY_COMPO[niv],elts:E.join(", "),e0:E[0],e1:E[1],e2:E[2]||E[0]})}
  return ctx}
-function fill(s,ctx){return String(s||"").replace(/\{(\w+)\}/g,(m,k)=>ctx[k]!=null?ctx[k]:m)}
+function fill(s,ctx){return artFix(String(s||"").replace(/\{(\w+)\}/g,(m,k)=>ctx[k]!=null?ctx[k]:m))}
+function artFix(s){return s.replace(/\b([àÀ]) le (?!(?:récupérer|conserver|garder|passer|transmettre|contrôler|protéger|reprendre|perdre|intercepter|faire|lancer|recevoir|frapper)\b)(?=[^\s])/g,(m,a)=>a==="à"?"au ":"Au ").replace(/\bde le (?!(?:récupérer|conserver|garder|passer|transmettre|contrôler|protéger|reprendre|perdre|intercepter|faire|lancer|recevoir|frapper)\b)/g,"du ").replace(/\bà les\b/g,"aux").replace(/\bde les\b/g,"des")}
 function refFor(f,bank,ctx){const P=PROFIL[f.niveau],niv=f.niveau,aps=f.aps;
  if(bank.fam===SC){if(["1BAC","2BAC"].includes(niv)){const n=aps==="Basketball"?5:aps==="Football"?(niv==="2BAC"?11:7):7;return `Match ${n} contre ${n} sur terrain réglementaire.`}
   if(niv==="3AC")return aps==="Football"?"Match 7 contre 7.":"Match 5 contre 5.";return P.refSC}
@@ -1595,6 +1667,7 @@ function refFor(f,bank,ctx){const P=PROFIL[f.niveau],niv=f.niveau,aps=f.aps;
 function adaptContenu(c,bank,f){let s=c;
  if(bank.fam===SC){s=s.replace(/la cible adverse|la cible/g,bank.C).replace(/la zone de marque|la zone adverse/g,bank.Z).replace(/sa cible/g,bank.C.replace(/^le /,"son ").replace(/ adverse$/,""));
   if(bank.B==="le ballon")s=s.replace(/la balle/g,"le ballon").replace(/de balle/g,"de ballon").replace(/à la récupérer/g,"à le récupérer").replace(/en conservant la balle/g,"en conservant le ballon")}
+ if(bank.fam===SC)s=s.replace(/\bà le (?!(?:récupérer|conserver|garder|passer|transmettre|contrôler|protéger|reprendre|perdre|intercepter|faire|lancer|recevoir|frapper)\b)/g,"au ").replace(/\bde le (?!(?:récupérer|conserver|garder|passer|transmettre|contrôler|protéger|reprendre|perdre|intercepter|faire|lancer|recevoir|frapper)\b)/g,"du ").replace(/\bà les /g,"aux ").replace(/\bde les /g,"des ");
  if(bank.fam===RV)s=s.replace(/sa cible/g,"son terrain");
  if(bank.fam===AT){const g=AT_GAIN[atKind(f.aps)];s=s.replace(/aux repères posés sur la piste/,"aux repères posés au sol");if(bank.rep)s=s.replace(/\(marques d’élan, couloirs, haies\)/,bank.rep);
   s=s.replace(/réduire le temps de course ou élargir l’espace franchi/,g[0]).replace(/en réduisant son temps ou en élargissant l’espace/,g[1]).replace(/pour réduire le temps/,"pour "+g[0]);
@@ -1630,7 +1703,7 @@ function mkSit(tpl,bank,ctx,tag,i,n){const sc=bank.fam===SC||bank.fam===RV;
  let crit=sc?(bank.cues[tag]||""):bank.fam===GY?(bank.cues[i?tpl.tags[0]:tag]||bank.cues[tag]||""):(tpl.r||"");
  if(sc&&i>0)crit=i===n-1?"Réinvestir en match les critères de réalisation de la séance.":"Mêmes critères que la situation 1, en jouant plus vite face à l’opposition.";
  const ttl=fill(tpl.t,ctx)+(rv&&/\{R/.test(tpl.c)?` (${rv.replace(/ sur terrain réduit/,"")})`:"");
- return{titre:ttl,conditions:fill(tpl.c,ctx),criteres:fill(crit,ctx),simplifier:fill(tpl.s,ctx),complexifier:fill(tpl.x,ctx),_sk:{k:tpl.sk,r:rv}}}
+ return{titre:ttl,conditions:fill(tpl.c,ctx),criteres:fill(crit,ctx),simplifier:fill(tpl.s,ctx),complexifier:fill(tpl.x,ctx),_sk:{k:tpl.sk,r:rv},_q:fill(tpl.q||((window.SIT_Q||{})[bank.fam]||{})[bank.fam===GY||bank.fam===AT?(tpl.tags||[tag])[0]:tag]||"",ctx),_o:fill(tpl.o||"",ctx),_sec:fill(tpl.sec||"",ctx)}}
 function refShort(f,bank,ctx){if(bank.fam===AT){const g=bank.sits.find(x=>x.g);return lcfirst(fill(g.c,ctx).split(/ ;|\./)[0])}
  if(bank.fam===GY)return `présentation d’un enchaînement au sol ${ctx.compo} devant le groupe classe`;return lcfirst(refFor(f,bank,ctx).replace(/\.$/,""))}
 function ensureComps(f,fam,type){const op=OP[f.niveau];if(!op)return[];
@@ -1641,6 +1714,9 @@ function ensureComps(f,fam,type){const op=OP[f.niveau];if(!op)return[];
   if(!n&&f.competences[0])f.competences[0].on=true}
  const cats=[];f.competences.filter(c=>c.on).forEach(c=>compCats(c.t).forEach(x=>{if(!cats.includes(x))cats.push(x)}));return cats}
 const STRETCH={[SC]:"épaules, ischio-jambiers, quadriceps et mollets",[RV]:"épaules, poignets, quadriceps et mollets",[AT]:"ischio-jambiers, quadriceps, mollets et adducteurs",[GY]:"épaules, poignets, dos et ischio-jambiers"};
+function nextAnnonce(f,bank,n,len){if(n>=len)return"Annonce de l’objectif du prochain cycle.";const s2=planFor(f.niveau,bank.fam,n+1,len);if(!s2)return"Annonce de l’objectif de la prochaine séance.";
+ if(s2.type!=="app")return"Annonce de la prochaine séance : évaluation sommative par la situation de référence.";
+ return `Annonce de l’objectif de la prochaine séance : ${lcfirst(s2.verbe)} ${adaptContenu(s2.contenu,bank,f).split(/ pour | afin /)[0]}.`}
 function genFiche(f,opt){opt=opt||{};const bank=BANK[f.aps];if(!bank||!OP[f.niveau])return false;const niv=f.niveau,fam=bank.fam,P=PROFIL[niv];
  f.famille=fam;f.oti=OP[niv].oti;f.otc=OP[niv].otc[fam]||f.otc;if(opt.variant!=null)f.variant=opt.variant;const v=f.variant||0;
  const len=parseInt(f.cycleLen)||10,n=parseInt(opt.n||f.seance)||1;const s=planFor(niv,fam,n,len);if(!s)return false;
@@ -1648,26 +1724,26 @@ function genFiche(f,opt){opt=opt||{};const bank=BANK[f.aps];if(!bank||!OP[f.nive
  f.seance=String(n);f.objSeq=s.seq;f.objMode="builder";f.objVerbe=o.verbe;f.objContenu=o.contenu;f.objCritere=o.critere;f.objLibre="";f.materiel=bank.mat;
  const ini=f.phases.ini,fd=f.phases.fond,fin=f.phases.fin,T=FAMT[fam],ref=refFor(f,bank,ctx);
  ini.but="Savoir s’échauffer et échauffer l’autre.";
- ini.contenu=`Prise en main : appel, tenue de sport, annonce de l’objectif de la séance.\nÉchauffement général : ${bank.gen||AT_COMMON.gen}\nÉchauffement spécifique : ${bank.spe[v%bank.spe.length]}`;
- ini.consignes="Échauffement progressif du général au spécifique ; adopter un mode de regroupement spécifique à chacun des groupes.";ini.criteres="Progressivité\nAdaptabilité\nSpécificité\nVariabilité";
- fin.but="Retour au calme et bilan de la séance.";fin.contenu=`Marche et respiration profonde.\nÉtirements : ${STRETCH[fam]}.\nBilan : rappel des critères de réussite, questions aux élèves, annonce de la prochaine séance.`;
- fin.consignes="Étirements lents, sans à-coups ; écouter les camarades pendant le bilan.";fin.criteres="Retour au calme effectif (respiration, pouls).\nLes élèves savent dire ce qu’ils ont appris.";
+ ini.contenu=`Prise en main de la classe : contrôle de l’absence et de la tenue, présentation de l’objectif de la séance, explication du déroulement.\nÉchauffement général : ${bank.gen||AT_COMMON.gen}\nÉchauffement spécifique : ${bank.spe[v%bank.spe.length]}`;
+ ini.consignes="Adopter un mode de regroupement spécifique à chacun des groupes ; échauffement progressif du général au spécifique."+(bank.iniCons?"\n"+bank.iniCons:"");ini.criteres="Progressivité\nAdaptabilité\nSpécificité\nVariabilité";
+ fin.but="Retour au calme et bilan de la séance.";fin.contenu=`Marche et respiration profonde.\nÉtirements : ${STRETCH[fam]}.\nBilan de la séance : questions / réponses sur les critères de réussite.\n${nextAnnonce(f,bank,n,len)}`;
+ fin.consignes="Éviter les temps de ressort lors des étirements ; écouter les camarades pendant le bilan.";fin.criteres="Retour au calme effectif (respiration, pouls).\nQuestions / réponses : les élèves savent dire ce qu’ils ont appris.\nFeed-back des élèves sur la séance.";
  let sits;
  if(s.type==="app"){const tpls=pickSits(bank,o.tag,v+(s.consol?1:0),s.contenu);sits=tpls.map((t,i)=>mkSit(t,bank,ctx,o.tag,i,tpls.length));
   fd.but=ucfirst(`${o.verbe} ${o.contenu}`)+".";const sb=ucfirst(`${lcfirst(o.verbe)} ${o.contenu.split(/ pour | afin /)[0]}`);sits.forEach((x,i)=>{if(!i||!shared(x.titre+" "+x.conditions+" "+x.criteres,`${o.verbe} ${o.contenu}`).length)x.conditions=`But : ${lcfirst(sb)}. `+x.conditions});}
  else{const first=fam===AT||fam===GY?mkSit(bank.sits[0],bank,ctx,tagOf(fam,bank.sits[0].tags[0]),0,2):mkSit(pickSits(bank,fam===SC?"conservation":"reception",v)[0],bank,ctx,fam===SC?"conservation":"reception",0,2);
   first.titre="Atelier d’observation : "+first.titre;first.conditions=(s.type==="diag"?`But : prévoir le projet du cycle à partir du niveau de pratique de chaque élève en ${bank.label.replace(/^(le|la|l’) ?/,"")}. `:`But : évaluer le niveau atteint de chaque élève en ${bank.label.replace(/^(le|la|l’) ?/,"")}. `)+first.conditions;first.criteres="Les observateurs notent les réussites sur la fiche d’observation. "+first.criteres;
   const g=fam===SC||fam===RV?"match":(bank.sits.find(x=>x.g)||{}).sk;
-  sits=[first,{titre:"Situation de référence",conditions:`${ref} Le groupe classe est réparti en trois rôles (exécutant, observateur, organisateur / arbitre) qui tournent.`,criteres:s.type==="diag"?"Les observateurs remplissent la fiche d’observation individuelle selon les critères de l’OTC.":"Les élèves sont évalués avec la grille d’évaluation du cycle (OTC).",simplifier:"",complexifier:"",_sk:{k:g,r:fam===SC||fam===RV?(ref.match(/\d+ contre \d+/)||[""])[0]:""}}];
+  sits=[first,{titre:"Situation de référence",conditions:`${ref} Le groupe classe est divisé en trois groupes (exécutants, observateurs, organisateurs / arbitres) qui tournent. `+(fam===AT?"L’un derrière l’autre, les élèves réalisent un essai libre puis leurs essais mesurés ; rotation des groupes quand le groupe exécutant a terminé.":fam===GY?"Chaque élève présente son enchaînement ; son binôme l’observe avec une fiche individuelle, puis on inverse les rôles.":"Binômes A.A’ – B.B’ : l’un joue, l’autre l’observe avec une fiche individuelle, puis on inverse les rôles."),criteres:s.type==="diag"?"Les observateurs remplissent la fiche d’observation individuelle selon les critères de l’OTC.":"Les élèves sont évalués avec la grille d’évaluation du cycle (OTC).",simplifier:"",complexifier:"",_sk:{k:g,r:fam===SC||fam===RV?(ref.match(/\d+ contre \d+/)||[""])[0]:""}}];
   fd.but=s.type==="diag"?`Prévoir le projet du cycle à partir du niveau de pratique des élèves en ${bank.label.replace(/^(le|la|l’) ?/,"")} observé par la situation de référence.`:`Évaluer le niveau atteint par les élèves en ${bank.label.replace(/^(le|la|l’) ?/,"")} par la situation de référence.`}
- const sks=sits.map(x=>x._sk);sits.forEach(x=>delete x._sk);fd.situations=sits;fd.reference=ref;
- const secu=[bank.regle,T.secu.split(" ; ")[0].replace(/\.?$/,".")].concat(cats.filter(c=>c.secu).map(c=>c.secu));fd.consSecu=[...new Set(secu)].join(" ");
- const orga=[T.orga.split(" ; ")[0].replace(/\.?$/,".")].concat(cats.filter(c=>c.orga).map(c=>c.orga)).slice(0,2);fd.consOrga=orga.join("\n");
- if(s.type==="app"){const q=[`Au moins ${o.a} ${o.unit} sur ${o.b} (${o.a}/${o.b}).`];cats.forEach(c=>{if(c.quant&&c.quant[fam])q.push(fill(c.quant[fam],ctx))});fd.critQuant=q.join("\n")}
+ const sks=sits.map(x=>x._sk),xq=sits.map(x=>x._q||""),xo=sits.map(x=>x._o||""),xs=sits.map(x=>x._sec||"");sits.forEach(x=>{delete x._sk;delete x._q;delete x._o;delete x._sec});fd.situations=sits;fd.reference=ref;
+ const secu=[bank.regle,T.secu.split(" ; ")[0].replace(/\.?$/,".")].concat(s.type==="app"?xs.filter(Boolean).slice(0,1):[]).concat(cats.filter(c=>c.secu).map(c=>c.secu));fd.consSecu=[...new Set(secu)].join(" ");
+ const orga=(s.type!=="app"?["Respecter l’ordre de passage et le rôle de chaque groupe."]:fam===AT&&window.AT_ATELIERS?[AT_ATELIERS]:[T.orga.split(" ; ")[0].replace(/\.?$/,".")]).concat(s.type==="app"?xo.filter(Boolean).slice(0,2):[]).concat(cats.filter(c=>c.orga).map(c=>c.orga)).slice(0,3);fd.consOrga=[...new Set(orga)].join("\n");
+ if(s.type==="app"){const q=[`Au moins ${o.a} ${o.unit} sur ${o.b} (${o.a}/${o.b}).`];const seenQ=new Set();xq.slice(0,2).forEach((t,i)=>{if(t&&!seenQ.has(t)){seenQ.add(t);q.push(`S${i+1} : ${t}`)}});cats.forEach(c=>{if(c.quant&&c.quant[fam])q.push(fill(c.quant[fam],ctx))});fd.critQuant=[...new Set(q)].slice(0,4).join("\n")}
  else fd.critQuant=s.type==="diag"?"Tous les élèves (100 %) passent le test et sont observés.":"Tous les élèves (100 %) sont évalués selon la grille.";
  const base=s.type==="app"?P.qual.split("\n"):[s.type==="diag"?"Fiches d’observation complètes et exploitables.":"Respect des critères de la grille d’évaluation."];
  const ql=[base[0]].concat(cats.slice(0,2).map(c=>c.qual),base.slice(1));fd.critQual=[...new Set(ql)].slice(0,4).join("\n");
- try{fd.schema=composeSchema(sits.map((x,i)=>({label:`Situation ${i+1} : ${x.titre}`,sk:buildSk(f,bank,sks[i],ctx,i)})));fd.sketch=null;
+ try{fd.schema=composeSchema(sits.map((x,i)=>({label:`Situation ${i+1} : ${x.titre}`,sk:buildSk(f,bank,sks[i],ctx,i)})),{legend:fam===SC||fam===RV});fd.sketch=null;fd.schemaH=sits.length*354-6+(fam===SC||fam===RV?70:0);
   ini.schema=composeSchema([{label:"Échauffement",sk:buildSk(f,bank,{k:"ini"},ctx,0)}]);ini.sketch=null;
   fin.schema=composeSchema([{label:"Retour au calme – bilan",sk:{bg:"vierge",items:fieldCircle()}}]);fin.sketch=null}catch(e){console.warn(e)}
  f.autoGen=true;return true}
@@ -1743,11 +1819,23 @@ function buildSk(f,bank,spec,ctx,i){const k=spec.k;
   if(bank.fam===AT)return skAT("gammes",{bg:"piste"});
   const it=[];[[100,110],[220,110],[340,110],[460,110],[160,300],[300,300],[440,300]].forEach((p,j)=>it.push(mk.P("A",p[0],p[1],j+1)));it.push(mk.tx(170,205,"mobilisation articulaire + gainage"));return{bg:"tapis",items:it}}
  if(bank.fam===SC)return skSC(k,spec.r,bank,i);if(bank.fam===RV)return skRV(k,spec.r,i);if(bank.fam===AT)return skAT(k,bank);return skGY(k,ctx)}
-function composeSchema(panels){const PW=480,PH=320,LH=28,G=6,c=document.createElement("canvas");c.width=PW;c.height=panels.length*(PH+LH)+(panels.length-1)*G;
+function composeSchema(panels,opt){opt=opt||{};const PW=480,PH=320,LH=28,G=6,LG=opt.legend?64:0,c=document.createElement("canvas");c.width=PW;c.height=panels.length*(PH+LH)+(panels.length-1)*G+(LG?LG+G:0);
  const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);const sb=SK.bg,si=SK.items;
  panels.forEach((p,i)=>{const y=i*(PH+LH+G);x.fillStyle="#1f4e79";x.fillRect(0,y,PW,LH);x.fillStyle="#fff";x.font="bold 16px sans-serif";x.textBaseline="middle";x.fillText(p.label,8,y+LH/2,PW-16);
   SK.bg=p.sk.bg;SK.items=p.sk.items;skDraw();x.drawImage(skc,0,y+LH,PW,PH)});
- SK.bg=sb;SK.items=si;if($("#skModal").classList.contains("on"))skDraw();return c.toDataURL("image/jpeg",0.82)}
+ SK.bg=sb;SK.items=si;if($("#skModal").classList.contains("on"))skDraw();
+ if(LG)drawLegend(x,0,c.height-LG,PW,LG);return c.toDataURL("image/jpeg",0.82)}
+/* Légende des symboles (comme dans les fiches modèles) */
+function drawLegend(x,ox,oy,w,h){x.save();x.fillStyle="#fff";x.fillRect(ox,oy,w,h);x.strokeStyle="#9aa4b1";x.lineWidth=1.5;x.strokeRect(ox+1,oy+1,w-2,h-2);
+ x.fillStyle="#1f4e79";x.font="bold 14px sans-serif";x.textBaseline="middle";x.textAlign="left";x.fillText("Légende",ox+8,oy+14);
+ const pl=(cx,cy,col,t)=>{x.fillStyle=col;x.strokeStyle="#fff";x.lineWidth=2;x.beginPath();x.arc(cx,cy,9,0,7);x.fill();x.stroke();x.fillStyle="#fff";x.font="bold 10px sans-serif";x.textAlign="center";x.fillText(t,cx,cy+1);x.textAlign="left"};
+ const ar=(x1,y1,x2,y2,col,dash)=>{x.strokeStyle=col;x.lineWidth=2.2;if(dash)x.setLineDash([6,4]);x.beginPath();x.moveTo(x1,y1);x.lineTo(x2,y2);x.stroke();x.setLineDash([]);x.fillStyle=col;x.beginPath();x.moveTo(x2,y2);x.lineTo(x2-8,y2-5);x.lineTo(x2-8,y2+5);x.closePath();x.fill()};
+ const tx=(t,px,py)=>{x.fillStyle="#222";x.font="13px sans-serif";x.fillText(t,px,py)};
+ const r1=oy+30,r2=oy+50;
+ pl(ox+86,r1,"#1f5fbf","A");tx("Attaquant",ox+100,r1);pl(ox+190,r1,"#d1342f","B");tx("Défenseur",ox+204,r1);
+ x.fillStyle="#fff";x.strokeStyle="#222";x.lineWidth=1.5;x.beginPath();x.arc(ox+300,r1,7,0,7);x.fill();x.stroke();x.fillStyle="#f5a623";x.beginPath();x.arc(ox+300,r1,3,0,7);x.fill();tx("Ballon",ox+312,r1);
+ x.fillStyle="#ff7f0e";x.strokeStyle="#7a3b00";x.lineWidth=1;x.beginPath();x.moveTo(ox+390,r1-9);x.lineTo(ox+397,r1+6);x.lineTo(ox+383,r1+6);x.closePath();x.fill();x.stroke();tx("Plot",ox+404,r1);
+ ar(ox+20,r2+2,ox+70,r2+2,"#111",false);tx("Trajet du ballon (passe, tir)",ox+78,r2+2);ar(ox+272,r2+2,ox+322,r2+2,"#7b1fa2",true);tx("Déplacement",ox+330,r2+2);x.restore()}
 /* ===================== PANNEAU « GÉNÉRER LA FICHE AUTOMATIQUEMENT » ===================== */
 function autoPanelHTML(){const f=cur,op=OP[f.niveau],mods=op?op.modules:[],ok=!!(BANK[f.aps]&&op);
  const fams=[SC,RV,AT,GY].map(fm=>`<optgroup label="${esc(fm)}">${AUTO_APS.filter(a=>BANK[a].fam===fm).map(a=>`<option ${f.aps===a?"selected":""}>${esc(a)}</option>`).join("")}</optgroup>`).join("");
@@ -1806,16 +1894,21 @@ function setDC(f){const T=pal(f.aps,f.famille),n=x=>x.replace("#","");Object.ass
 function wr(t,o){o=o||{};const rp=`<w:rPr>${o.font?`<w:rFonts w:ascii="${o.font}" w:hAnsi="${o.font}"/>`:""}${o.b?"<w:b/>":""}${o.i?"<w:i/>":""}${o.color?`<w:color w:val="${o.color}"/>`:""}${o.sz?`<w:sz w:val="${o.sz}"/><w:szCs w:val="${o.sz}"/>`:""}${o.u?'<w:u w:val="single"/>':""}</w:rPr>`;
  return String(t==null?"":t).split("\n").map((l,i)=>`<w:r>${rp}${i?"<w:br/>":""}<w:t xml:space="preserve">${XE(l)}</w:t></w:r>`).join("")}
 function wp(runs,o){o=o||{};return `<w:p><w:pPr>${o.bb?`<w:pBdr><w:bottom w:val="single" w:sz="${o.bbsz||18}" w:space="1" w:color="${o.bb}"/></w:pBdr>`:""}<w:spacing w:before="${o.before||0}" w:after="0" w:line="240" w:lineRule="auto"/>${o.jc?`<w:jc w:val="${o.jc}"/>`:""}<w:rPr>${o.sz?`<w:sz w:val="${o.sz}"/>`:""}</w:rPr></w:pPr>${runs||""}</w:p>`}
-function wc(paras,o){o=o||{};return `<w:tc><w:tcPr><w:tcW w:w="${o.w}" w:type="dxa"/>${o.span>1?`<w:gridSpan w:val="${o.span}"/>`:""}${o.fill?`<w:shd w:val="clear" w:color="auto" w:fill="${o.fill}"/>`:""}<w:vAlign w:val="${o.v||"top"}"/></w:tcPr>${paras||wp("")}</w:tc>`}
-function wt(ws,rows,opt){opt=opt||{};return `<w:tbl><w:tblPr><w:tblW w:w="${ws.reduce((a,b)=>a+b,0)}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>${["top","left","bottom","right","insideH","insideV"].map(k=>opt.nob?`<w:${k} w:val="nil"/>`:`<w:${k} w:val="single" w:sz="6" w:space="0" w:color="${DC.LN}"/>`).join("")}</w:tblBorders><w:tblCellMar><w:top w:w="15" w:type="dxa"/><w:left w:w="55" w:type="dxa"/><w:bottom w:w="15" w:type="dxa"/><w:right w:w="55" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${ws.map(w=>`<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>${rows.map(r=>`<w:tr><w:trPr><w:cantSplit/>${opt.h?`<w:trHeight w:val="${opt.h}" w:hRule="exact"/>`:""}</w:trPr>${r}</w:tr>`).join("")}</w:tbl>`}
+function wc(paras,o){o=o||{};return `<w:tc><w:tcPr><w:tcW w:w="${o.w}" w:type="dxa"/>${o.span>1?`<w:gridSpan w:val="${o.span}"/>`:""}${o.vm?`<w:vMerge${o.vm==="restart"?' w:val="restart"':""}/>`:""}${o.fill?`<w:shd w:val="clear" w:color="auto" w:fill="${o.fill}"/>`:""}<w:vAlign w:val="${o.v||"top"}"/></w:tcPr>${paras||wp("")}</w:tc>`}
+function wt(ws,rows,opt){opt=opt||{};return `<w:tbl><w:tblPr><w:tblW w:w="${ws.reduce((a,b)=>a+b,0)}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>${["top","left","bottom","right","insideH","insideV"].map(k=>opt.nob?`<w:${k} w:val="nil"/>`:`<w:${k} w:val="single" w:sz="6" w:space="0" w:color="${DC.LN}"/>`).join("")}</w:tblBorders><w:tblCellMar><w:top w:w="15" w:type="dxa"/><w:left w:w="55" w:type="dxa"/><w:bottom w:w="15" w:type="dxa"/><w:right w:w="55" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${ws.map(w=>`<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>${rows.map((r,ri)=>`<w:tr><w:trPr>${opt.split?"":"<w:cantSplit/>"}${opt.h?`<w:trHeight w:val="${opt.h}" w:hRule="exact"/>`:""}${opt.hdr&&!ri?"<w:tblHeader/>":""}</w:trPr>${r}</w:tr>`).join("")}</w:tbl>`}
 const wgap=()=>wp("",{sz:6});
 function pcts(total,arr){const w=arr.map(p=>Math.round(total*p/100));w[w.length-1]+=total-w.reduce((a,b)=>a+b,0);return w}
 function wimg(rid,id,cx,cy){return `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${id}" name="Schema${id}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${id}" name="schema${id}.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`}
 function toPng(src,bg){return new Promise(res=>{if(!src)return res(null);const im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=im.naturalWidth||96;c.height=im.naturalHeight||96;const x=c.getContext("2d");x.fillStyle=bg||"#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0);
   c.toBlob(async b=>{if(!b)return res(null);res({bytes:new Uint8Array(await b.arrayBuffer()),w:c.width,h:c.height})},"image/png")};im.onerror=()=>res(null);im.src=src})}
+/* Découpe un schéma composé (480 px de large, panneaux de 354 px) en images séparées : la ligne du tableau Word peut alors continuer sur la page suivante */
+function toPngSlices(src){return new Promise(res=>{if(!src)return res([]);const im=new Image();im.onload=async()=>{const W=im.naturalWidth,H=im.naturalHeight,step=354;
+  if(W!==480||H<=step+80){const p=await toPng(src);return res(p?[p]:[])}
+  const out=[];for(let y=0;y<H;y+=step){const h=Math.min(step,H-y);if(h<20)break;const c=document.createElement("canvas");c.width=W;c.height=h;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,W,h);x.drawImage(im,0,y,W,h,0,0,W,h);
+   const b=await new Promise(r=>c.toBlob(r,"image/png"));if(b)out.push({bytes:new Uint8Array(await b.arrayBuffer()),w:W,h})}res(out)};im.onerror=()=>res([]);im.src=src})}
 const W_NS='xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"';
 async function docxPackage(bodyXml,images,landscape){/* images : [{rid, bytes}] */
- const sect=landscape!==false?`<w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="454" w:right="510" w:bottom="340" w:left="510" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>`:`<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="567" w:right="567" w:bottom="567" w:left="567" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>`;
+ const sect=landscape!==false?`<w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="454" w:right="567" w:bottom="340" w:left="567" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>`:`<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="567" w:right="567" w:bottom="567" w:left="567" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>`;
  const files=[
   {name:"[Content_Types].xml",data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>`},
   {name:"_rels/.rels",data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>`},
@@ -1826,11 +1919,14 @@ async function docxPackage(bodyXml,images,landscape){/* images : [{rid, bytes}] 
   .concat(images.map(im=>({name:`word/media/${im.rid}.png`,data:im.bytes,store:true})));
  return makeZip(files,"application/vnd.openxmlformats-officedocument.wordprocessingml.document")}
 /* Fiche de séance → document.xml (mêmes tableaux que l’aperçu) */
-async function ficheDocx(f){const TH=setDC(f),L0=ficheLen(f),sz=L0>3000?13:L0>2000?14:16,TW=15818,imgs=[];let nid=1;
+/* Format de référence (fiche PDF de l’enseignant) : A4 paysage, Calibri 11 pt, titre 16 pt, en-têtes de tableau 11–12 pt */
+const REF_SZ={body:22,head:22,head2:24,title:32,num:24};
+async function ficheDocx(f){const TH=setDC(f),sz=REF_SZ.body,TW=15818,imgs=[];let nid=1;
  const t=(x,o)=>wr(x,Object.assign({sz},o||{})),lb=x=>wr(x,{b:true,color:DC.D,sz}),P=f.phases,fd=P.fond;
  const head=(x)=>wc(wp(wr(x,{b:true,color:DC.HF,sz}),{jc:"center"}),{fill:DC.HD,v:"center"});
  const lab=(x,w)=>wc(wp(lb(x)),{w,fill:DC.L,v:"center"}),val=(x,w,o)=>wc(wp(t(x,o)),{w,v:"center"});
  const paras=s=>String(s||"").trim().split("\n").map(l=>wp(t(l))).join("")||wp("");
+ async function pics(src,wCm){const L=await toPngSlices(src);if(!L.length)return wp("");return L.map(p=>{const rid="rIdImg"+(imgs.length+1);imgs.push({rid,bytes:p.bytes});const cx=Math.round(wCm*360000),cy=Math.round(cx*p.h/p.w);return wp(wimg(rid,nid++,cx,cy),{jc:"center"})}).join("")}
  async function pic(src,wCm){const p=await toPng(src);if(!p)return wp("");const rid="rIdImg"+(imgs.length+1);imgs.push({rid,bytes:p.bytes});const cx=Math.round(wCm*360000),cy=Math.round(cx*p.h/p.w);return wp(wimg(rid,nid++,cx,cy),{jc:"center"})}
  const b=[];
  b.push(await docxBanner(f,TW,imgs,()=>nid++),wgap());
@@ -1839,10 +1935,10 @@ async function ficheDocx(f){const TH=setDC(f),L0=ficheLen(f),sz=L0>3000?13:L0>20
  const w2=pcts(TW,[20,12,11,9,8,11,29]),hs=["Module d’enseignement","Famille d’APS","APS support","Niveau scolaire","N° de séance","Effectif (G / F)","Matériel"];
  const cen=(x,w,o)=>wc(wp(t(x,o),{jc:"center"}),{w,v:"center"});
  b.push(wt(w2,[hs.map((x,i)=>wc(wp(wr(x,{b:true,color:DC.HF,sz}),{jc:"center"}),{w:w2[i],fill:DC.HD,v:"center"})).join(""),
-  cen(f.module,w2[0])+cen(famName(f),w2[1])+cen(f.aps,w2[2])+cen(f.niveau,w2[3])+cen(f.seance,w2[4],{b:true,sz:22})+cen(`G : ${f.effG}   F : ${f.effF}`,w2[5])+wc(wp(t(f.materiel)),{w:w2[6],v:"center"})]),wgap());
+  cen(f.module,w2[0])+cen(famName(f),w2[1])+cen(f.aps,w2[2])+cen(f.niveau,w2[3])+cen(f.seance,w2[4],{b:true,sz:REF_SZ.num})+cen(`G : ${f.effG}   F : ${f.effF}`,w2[5])+wc(wp(t(f.materiel)),{w:w2[6],v:"center"})]),wgap());
  const w3=pcts(TW,[23,77]),comps=f.competences.filter(c=>c.on&&c.t.trim()).map(c=>"- "+c.t.trim()).join("\n");
  b.push(wt(w3,[["Objectif terminal d’intégration (OTI)",f.oti],["Objectif terminal du cycle (OTC)",f.otc],["Compétences visées",comps],["Objectif de la séquence",f.objSeq],["Objectif de la séance",objSentence(f)]].map(([k,v],i)=>lab(k,w3[0])+wc(paras(v).replace(i===4?/<w:rPr>/g:/$^/,i===4?"<w:rPr><w:b/>":""),{w:w3[1],v:"center"}))),wgap());
- const w4=pcts(TW,[7,5,11,38,13,13,13]),hs4=["Phase","Durée","But","Contenu (situations, conditions et critères de réalisation, variables)","Consignes","Critères de réussite","Schématisation"];
+ const w4=pcts(TW,[9,6,11,35,13,13,13]),hs4=["Phase","Durée","But","Contenu (situations, conditions et critères de réalisation, variables)","Consignes","Critères de réussite","Schématisation"];
  const imW=w4[6]/567*0.92;
  let cont="";const sits=fd.situations.filter(s=>Object.values(s).some(v=>String(v).trim()));
  sits.forEach((s,i)=>{if(sits.length>1||s.titre.trim())cont+=wp(wr(`Situation ${i+1}${s.titre.trim()?" : "+s.titre.trim():""}`,{b:true,u:true,color:DC.D,sz}),{before:i?60:0});
@@ -1852,15 +1948,15 @@ async function ficheDocx(f){const TH=setDC(f),L0=ficheLen(f),sz=L0>3000?13:L0>20
  if(fd.reference.trim())cont+=wp(lb("Situation de référence : ")+t(fd.reference.trim()),{before:60});
  const cons=(fd.consSecu.trim()?wp(lb("Sécurité :"))+paras(fd.consSecu):"")+(fd.consOrga.trim()?wp(lb("Organisation :"),{before:40})+paras(fd.consOrga):"");
  const crit=(fd.critQuant.trim()?wp(lb("Quantitatifs :"))+paras(fd.critQuant):"")+(fd.critQual.trim()?wp(lb("Qualitatifs :"),{before:40})+paras(fd.critQual):"");
- const row=async(name,p,c,co,cr)=>wc(wp(wr(name,{b:true,color:DC.D,sz:sz+2}),{jc:"center"}),{w:w4[0],fill:DC.M,v:"center"})+wc(wp(wr(p.duree,{b:true,color:DC.D,sz}),{jc:"center"}),{w:w4[1],v:"center"})+wc(paras(p.but),{w:w4[2]})+wc(c||wp(""),{w:w4[3]})+wc(co||wp(""),{w:w4[4]})+wc(cr||wp(""),{w:w4[5]})+wc(p.schema?await pic(p.schema,imW):wp(""),{w:w4[6],v:"center"});
- b.push(wt(w4,[hs4.map((x,i)=>wc(wp(wr(x,{b:true,color:DC.HF,sz}),{jc:"center"}),{w:w4[i],fill:DC.HD,v:"center"})).join(""),
+ const row=async(name,p,c,co,cr)=>wc(wp(wr(name,{b:true,color:DC.D,sz}),{jc:"center"}),{w:w4[0],fill:DC.M,v:"top"})+wc(wp(wr(p.duree,{b:true,color:DC.D,sz}),{jc:"center"}),{w:w4[1],v:"top"})+wc(paras(p.but),{w:w4[2]})+wc(c||wp(""),{w:w4[3]})+wc(co||wp(""),{w:w4[4]})+wc(cr||wp(""),{w:w4[5]})+wc(p.schema?await pics(p.schema,imW):wp(""),{w:w4[6],v:"top"});
+ b.push(wt(w4,[hs4.map((x,i)=>wc(wp(wr(x,{b:true,color:DC.HF,sz:REF_SZ.head2}),{jc:"center"}),{w:w4[i],fill:DC.HD,v:"center"})).join(""),
   await row("Initiale",P.ini,paras(P.ini.contenu),paras(P.ini.consignes),paras(P.ini.criteres)),
   await row("Fondamentale",fd,cont,cons,crit),
-  await row("Finale",P.fin,paras(P.fin.contenu),paras(P.fin.consignes),paras(P.fin.criteres))]),wgap());
+  await row("Finale",P.fin,paras(P.fin.contenu),paras(P.fin.consignes),paras(P.fin.criteres))],{split:true}),wgap());
  b.push(wt(w3,[lab("Bilan et observations de la séance",w3[0])+wc(paras(f.bilan),{w:w3[1]})]));
  return docxPackage(b.join(""),imgs)}
 async function docxBanner(f,TW,imgs,nextId){const TT="FICHE DE PRÉPARATION D’UNE SÉANCE D’EPS";
- return wp(wr(TT,{b:true,color:DC.D,sz:24}),{jc:"center",bb:DC.BASE,bbsz:18})}
+ return wp(wr(TT,{b:true,color:DC.D,sz:REF_SZ.title}),{jc:"center",bb:DC.BASE,bbsz:18})}
 /* ===================== CYCLE ===================== */
 function cycleKey(f){return [f.niveau,f.aps].join("|")}
 function fileStem(f){return `S${String(f.seance||0).padStart(2,"0")}_${(f.aps||"Seance").replace(/['’]/g,"_")}_${f.niveau||""}`.normalize("NFC").replace(/[^\wÀ-ÿ-]+/g,"_").replace(/_+/g,"_").replace(/_$/,"")}
@@ -1880,33 +1976,39 @@ function projetData(list){const f0=list[0]||cur,fam=f0.famille,acq=(ACQ[fam]||AC
  const rows=list.map(f=>{const fd=f.phases.fond,seq=f.objSeq===prev?"":f.objSeq;prev=f.objSeq;const ev=/évaluation/i.test(f.objSeq);
   return{n:f.seance,seq,obj:objSentence(f),cont:fd.situations.map(s=>s.titre).filter(Boolean).join(" ; "),eval:ev?(/diagnost/i.test(f.objSeq)?"Évaluation diagnostique (fiche d’observation)":"Évaluation sommative (grille du cycle)"):(fd.critQuant.split("\n")[0]||"")}});
  return{f0,acq,rows,ref:(list.find(f=>f.phases.fond.reference.trim())||f0).phases.fond.reference,comps:f0.competences.filter(c=>c.on).map(c=>"- "+c.t).join("\n")}}
-async function projetDocx(list){const d=projetData(list),f0=d.f0,_t=setDC(f0),TW=15818,_len=JSON.stringify(d.rows).length+String(f0.oti).length+String(f0.otc).length+d.acq.join("").length,sz=_len>3400?15:_len>3000?16:17,t=(x,o)=>wr(x,Object.assign({sz},o||{})),b=[];
- const H=(x,w,span)=>wc(wp(wr(x,{b:true,color:DC.HF,sz}),{jc:"center"}),{w,fill:DC.HD,v:"center",span}),V=(x,w,o)=>wc(String(x||"").split("\n").map(l=>wp(t(l))).join("")||wp(""),Object.assign({w,v:"center"},o||{})),Lb=(x,w)=>wc(wp(wr(x,{b:true,color:DC.D,sz})),{w,fill:DC.L,v:"center"});
- b.push(wp(wr("PROJET PRÉVISIONNEL DU CYCLE — "+(f0.aps||"").toUpperCase(),{b:true,color:DC.D,sz:26}),{jc:"center",bb:DC.BASE,bbsz:18}),wgap());
+function zebra(T){const h=x=>parseInt(x,16),a=T.L.replace("#",""),b=T.M.replace("#","");return [0,2,4].map(k=>Math.round((h(a.substr(k,2))+h(b.substr(k,2)))/2).toString(16).padStart(2,"0")).join("").toUpperCase()}
+/* Groupes de séances consécutives ayant la même séquence (fusion verticale comme dans la fiche de référence) */
+function seqGroups(rows){const g=[];rows.forEach((r,i)=>{if(i&&r.seq==="")g[g.length-1].n++;else g.push({i,n:1,seq:r.seq})});return g}
+async function projetDocx(list){const d=projetData(list),f0=d.f0,T=setDC(f0),TW=15818,sz=REF_SZ.body,t=(x,o)=>wr(x,Object.assign({sz},o||{})),b=[],ZB=zebra(T);
+ const H=(x,w,span,s2)=>wc(wp(wr(x,{b:true,color:DC.HF,sz:s2||sz}),{jc:"center"}),{w,fill:DC.HD,v:"center",span}),V=(x,w,o)=>wc(String(x||"").split("\n").map(l=>wp(t(l,o&&o.b?{b:true}:null))).join("")||wp(""),Object.assign({w,v:"center"},o||{})),Lb=(x,w,o)=>wc(String(x||"").split("\n").map(l=>wp(wr(l,{b:true,color:o&&o.ink||DC.D,sz}))).join(""),Object.assign({w,fill:DC.L,v:"center"},o||{}));
+ b.push(wp(wr("PROJET PRÉVISIONNEL DU CYCLE — "+(f0.aps||"").toUpperCase(),{b:true,color:DC.D,sz:REF_SZ.title}),{jc:"center",bb:DC.BASE,bbsz:18}),wgap());
  const w=pcts(TW,[25,25,25,25]);
- b.push(wt(w,[H("Module d’enseignement",w[0])+H("Groupe d’APS",w[1])+H("APS support",w[2])+H("Niveau scolaire",w[3]),V(f0.module,w[0])+V(f0.famille,w[1])+V(f0.aps,w[2])+V(OP[f0.niveau]?OP[f0.niveau].label:f0.niveau,w[3]),
+ b.push(wt(w,[H("Module d’enseignement",w[0])+H("Groupe d’APS",w[1])+H("APS support",w[2])+H("Niveau scolaire",w[3]),V(f0.module,w[0])+V(famName(f0),w[1])+V(f0.aps,w[2])+V(OP[f0.niveau]?OP[f0.niveau].label:f0.niveau,w[3]),
   Lb("Objectif terminal d’intégration (OTI)",w[0])+V(f0.oti,w[1]+w[2]+w[3],{span:3}),Lb("Objectif terminal du cycle (OTC)",w[0])+V(f0.otc,w[1]+w[2]+w[3],{span:3}),Lb("Compétences visées",w[0])+V(d.comps,w[1]+w[2]+w[3],{span:3}),
-  Lb("Acquisitions attendues",w[0])+H("Connaissances procédurales",w[1])+H("Connaissances conceptuelles",w[2])+H("Connaissances comportementales",w[3]),wc(wp(""),{w:w[0]})+V(d.acq[0],w[1])+V(d.acq[2-1],w[2])+V(d.acq[2],w[3])]),wgap());
- const w2=pcts(TW,[6,16,34,26,18]);
- b.push(wt(w2,[H("Séances",w2[0])+H("Séquence",w2[1])+H("Objectifs",w2[2])+H("Contenus (situations)",w2[3])+H("Évaluation",w2[4])].concat(d.rows.map(r=>wc(wp(wr(r.n,{b:true,sz}),{jc:"center"}),{w:w2[0],v:"center"})+V(r.seq,w2[1],{fill:r.seq?DC.L:null})+V(r.obj,w2[2])+V(r.cont,w2[3])+V(r.eval,w2[4])),
-  [wc(wp(wr("SITUATION DE RÉFÉRENCE",{b:true,color:DC.D,sz})),{w:w2[0]+w2[1],span:2,fill:DC.L,v:"center"})+V(d.ref,w2[2]+w2[3]+w2[4],{span:3})])));
+  Lb("Acquisitions attendues",w[0],{vm:"restart"})+H("Connaissances procédurales",w[1])+H("Connaissances conceptuelles",w[2])+H("Connaissances comportementales",w[3]),wc(wp(""),{w:w[0],fill:DC.L,vm:"cont"})+V(d.acq[0],w[1])+V(d.acq[1],w[2])+V(d.acq[2],w[3])]),wgap());
+ const w2=pcts(TW,[6,16,78]),G=seqGroups(d.rows),start={};G.forEach(g=>start[g.i]=g);
+ const body=d.rows.map((r,i)=>{const ev=i%2===1?{fill:ZB}:{};const sc=start[i]?Lb(start[i].seq,w2[1],{vm:start[i].n>1?"restart":null,ink:"000000"}):wc(wp(""),{w:w2[1],fill:DC.L,vm:"cont"});
+  return wc(wp(wr(r.n,{b:true,sz}),{jc:"center"}),{w:w2[0],v:"center"})+sc+V(r.obj,w2[2],ev)});
+ b.push(wt(w2,[H("Séances",w2[0],0,REF_SZ.head2)+H("Séquence",w2[1],0,REF_SZ.head2)+H("Objectifs",w2[2],0,REF_SZ.head2)].concat(body,
+  [wc(wp(wr("SITUATION DE RÉFÉRENCE",{b:true,color:DC.D,sz})),{w:w2[0]+w2[1],span:2,fill:DC.L,v:"center"})+V(d.ref,w2[2])])));
  return docxPackage(b.join(""),[])}
-function projetHTML(list){const d=projetData(list),f0=d.f0,T=pal(f0.aps,f0.famille),c=`border:1px solid ${T.line};padding:3px 5px;vertical-align:middle;font-size:9pt;-webkit-print-color-adjust:exact;print-color-adjust:exact`,h=`${c};background:${T.hd};color:${T.hf};font-weight:bold;text-align:center`,l=`${c};background:${T.L};color:${T.ink};font-weight:bold`,n=s=>esc(s||"").replace(/\n/g,"<br>");
- return `<div style="font-family:Calibri,Arial,sans-serif"><h2 style="text-align:center;color:${T.ink};margin:0 0 6px;padding-bottom:3px;border-bottom:3px solid ${T.base}">PROJET PRÉVISIONNEL DU CYCLE — ${esc((f0.aps||"").toUpperCase())}</h2><table style="width:100%;border-collapse:collapse;table-layout:fixed">
- <tr><td style="${h}">Module d’enseignement</td><td style="${h}">Groupe d’APS</td><td style="${h}">APS support</td><td style="${h}">Niveau scolaire</td></tr><tr><td style="${c}">${esc(f0.module)}</td><td style="${c}">${esc(f0.famille)}</td><td style="${c}">${esc(f0.aps)}</td><td style="${c}">${esc(OP[f0.niveau]?OP[f0.niveau].label:f0.niveau)}</td></tr>
+function projetHTML(list){const d=projetData(list),f0=d.f0,T=pal(f0.aps,f0.famille),ZB="#"+zebra(T),c=`border:1px solid ${T.line};padding:1pt 3pt;vertical-align:middle;font-size:11pt;line-height:1.2;-webkit-print-color-adjust:exact;print-color-adjust:exact`,h=`${c};background:${T.hd};color:${T.hf};font-weight:bold;text-align:center`,h2=`${h};font-size:12pt`,l=`${c};background:${T.L};color:${T.ink};font-weight:bold`,n=s=>esc(s||"").replace(/\n/g,"<br>");
+ const G=seqGroups(d.rows),start={};G.forEach(g=>start[g.i]=g);
+ return `<div style="font-family:Calibri,Carlito,Arial,sans-serif;color:#000"><div style="text-align:center;color:${T.ink};font-weight:bold;font-size:16pt;line-height:1.2;margin:0 0 4pt;padding-bottom:2pt;border-bottom:2.25pt solid ${T.base}">PROJET PRÉVISIONNEL DU CYCLE — ${esc((f0.aps||"").toUpperCase())}</div><table style="width:100%;border-collapse:collapse;table-layout:fixed">
+ <tr><td style="${h}">Module d’enseignement</td><td style="${h}">Groupe d’APS</td><td style="${h}">APS support</td><td style="${h}">Niveau scolaire</td></tr><tr><td style="${c}">${esc(f0.module)}</td><td style="${c}">${esc(famName(f0))}</td><td style="${c}">${esc(f0.aps)}</td><td style="${c}">${esc(OP[f0.niveau]?OP[f0.niveau].label:f0.niveau)}</td></tr>
  <tr><td style="${l}">Objectif terminal d’intégration (OTI)</td><td style="${c}" colspan="3">${n(f0.oti)}</td></tr><tr><td style="${l}">Objectif terminal du cycle (OTC)</td><td style="${c}" colspan="3">${n(f0.otc)}</td></tr><tr><td style="${l}">Compétences visées</td><td style="${c}" colspan="3">${n(d.comps)}</td></tr>
- <tr><td style="${l}">Acquisitions attendues</td><td style="${h}">Connaissances procédurales</td><td style="${h}">Connaissances conceptuelles</td><td style="${h}">Connaissances comportementales</td></tr><tr><td style="${c}"></td><td style="${c}">${n(d.acq[0])}</td><td style="${c}">${n(d.acq[1])}</td><td style="${c}">${n(d.acq[2])}</td></tr></table>
- <table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:6px"><col width="6%"><col width="16%"><col width="34%"><col width="26%"><col width="18%"><tr><td style="${h}">Séances</td><td style="${h}">Séquence</td><td style="${h}">Objectifs</td><td style="${h}">Contenus (situations)</td><td style="${h}">Évaluation</td></tr>
- ${d.rows.map(r=>`<tr><td style="${c};text-align:center;font-weight:bold">${esc(r.n)}</td><td style="${r.seq?l:c}">${n(r.seq)}</td><td style="${c}">${n(r.obj)}</td><td style="${c}">${n(r.cont)}</td><td style="${c}">${n(r.eval)}</td></tr>`).join("")}
- <tr><td style="${l}" colspan="2">SITUATION DE RÉFÉRENCE</td><td style="${c}" colspan="3">${n(d.ref)}</td></tr></table></div>`}
+ <tr><td style="${l}" rowspan="2">Acquisitions attendues</td><td style="${h}">Connaissances procédurales</td><td style="${h}">Connaissances conceptuelles</td><td style="${h}">Connaissances comportementales</td></tr><tr><td style="${c}">${n(d.acq[0])}</td><td style="${c}">${n(d.acq[1])}</td><td style="${c}">${n(d.acq[2])}</td></tr></table>
+ <table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:4pt"><col width="6%"><col width="16%"><col width="78%"><tr><td style="${h2}">Séances</td><td style="${h2}">Séquence</td><td style="${h2}">Objectifs</td></tr>
+ ${d.rows.map((r,i)=>`<tr><td style="${c};text-align:center;font-weight:bold">${esc(r.n)}</td>${start[i]?`<td style="${l};color:#000" rowspan="${start[i].n}">${n(start[i].seq)}</td>`:""}<td style="${c}${i%2?`;background:${ZB}`:""}">${n(r.obj)}</td></tr>`).join("")}
+ <tr><td style="${l}" colspan="2">SITUATION DE RÉFÉRENCE</td><td style="${c}">${n(d.ref)}</td></tr></table></div>`}
 function cycleHTML(list,noProjet){const pages=(noProjet?[]:[`<div class="pg"><div class="fit">${projetHTML(list)}</div></div>`]).concat(list.map(f=>`<div class="pg"><div class="fit">${ficheHTML(f)}</div></div>`));
  return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Cycle ${esc((list[0]||cur).aps)} ${esc((list[0]||cur).niveau)}</title><style>
-@page{size:A4 landscape;margin:8mm}body{margin:0;background:#e9eef4;font-family:Calibri,Arial,sans-serif}.bar{position:sticky;top:0;background:${pal((list[0]||{}).aps,(list[0]||{}).famille).hd};color:${pal((list[0]||{}).aps,(list[0]||{}).famille).hf};padding:8px 12px;font:14px sans-serif}.bar button{font-size:14px;padding:6px 12px;margin-left:8px}
-.pg{width:281mm;height:194mm;margin:10px auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.2);overflow:hidden;page-break-after:always;break-after:page}.fit{width:279mm;transform-origin:0 0}
-@media print{body{background:#fff}.bar{display:none}.pg{margin:0;box-shadow:none}}</style></head><body>
-<div class="bar">${noProjet?"Fiche de séance":"Cycle complet : projet prévisionnel + "+list.length+" fiches (une page par séance)"}. <button onclick="window.print()">🖨 Imprimer / Enregistrer en PDF</button></div>
+@page{size:A4 landscape;margin:8mm 10mm 6mm 10mm}body{margin:0;background:#e9eef4;font-family:Calibri,Carlito,Arial,sans-serif}.bar{position:sticky;top:0;background:${pal((list[0]||{}).aps,(list[0]||{}).famille).hd};color:${pal((list[0]||{}).aps,(list[0]||{}).famille).hf};padding:8px 12px;font:14px sans-serif}.bar button{font-size:14px;padding:6px 12px;margin-left:8px}
+.pg{width:277mm;min-height:196mm;padding:8mm 10mm 6mm;margin:10px auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.2);page-break-after:always;break-after:page}.fit{width:277mm}
+@media print{body{background:#fff}.bar{display:none}.pg{margin:0;padding:0;min-height:0;box-shadow:none}}</style></head><body>
+<div class="bar">${noProjet?"Fiche de séance":"Cycle complet : projet prévisionnel + "+list.length+" fiches (A4 paysage, Calibri 11 pt)"}. <button onclick="window.print()">🖨 Imprimer / Enregistrer en PDF</button></div>
 ${pages.join("\n")}
-<script>(function(){var H=194*96/25.4;document.querySelectorAll(".fit").forEach(function(d){var z=1;for(var i=0;i<6;i++){d.style.zoom=z;d.style.width=(279/z)+"mm";var h=d.getBoundingClientRect().height;if(h<=H)break;z=Math.max(.4,z*H/h*.99)}})})();<\/script></body></html>`}
+</body></html>`}
 /* ===================== ACTIONS : Word (.docx), cycle complet, impression, import ===================== */
 let PRINT_CYCLE=false,BUSY=false;
 function cycleHTMLOne(f){return cycleHTML([f],true)}
@@ -1923,7 +2025,7 @@ async function zipCycle(){if(BUSY)return;if(!cur.niveau||!cur.aps){toast("Choisi
  catch(e){console.error(e);toast("Erreur pendant la création du ZIP : "+e.message)}finally{BUSY=false}}
 function prepCyclePrint(){const {list}=cycleFiches(cur),pa=$("#printArea");PRINT_CYCLE=true;pa.style.zoom="1";pa.style.width="auto";
  pa.innerHTML=[`<div class="ppage"><div class="pfit">${projetHTML(list)}</div></div>`].concat(list.map(f=>`<div class="ppage"><div class="pfit">${ficheHTML(f)}</div></div>`)).join("");
- const H=188*96/25.4;pa.querySelectorAll(".pfit").forEach(d=>{let z=1;for(let i=0;i<6;i++){d.style.zoom=String(z);d.style.width=(279/z)+"mm";const h=d.getBoundingClientRect().height;if(h<=H+1)break;z=Math.max(.4,z*H/h*.995)}});return list}
+ const H=188*96/25.4;pa.querySelectorAll(".pfit").forEach(d=>{d.style.zoom="1";d.style.width="277mm"});return list}
 function printCycle(){if(!cur.niveau||!cur.aps){toast("Choisis d’abord le niveau et l’APS");return}
  doPrint(prepCyclePrint,`Cycle_${cycleName(cur)}_imprimable.html`,()=>cycleHTML(cycleFiches(cur).list))}
 function importDialog(){let txt="";uiDialog({title:"Importer des fiches (JSON)",okLabel:"Importer",html:`<p><button class="btn sm" id="impFile">📂 Choisir un fichier JSON</button></p><p class="hint">ou colle ici le contenu d’un fichier JSON exporté :</p><textarea id="impTxt" rows="6"></textarea>`}).then(v=>{if(v&&txt.trim())importJSONText(txt)});
