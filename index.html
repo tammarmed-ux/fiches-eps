@@ -1157,15 +1157,15 @@ function refOf(niv,fam){const P=PROFIL[niv];
  if(fam===AT)return "Épreuve complète dans les conditions réglementaires adaptées au niveau, mesurée par l’enseignant et les élèves juges.";
  const g=(OP[niv].otc[GY].match(/compos[ée] de\s*:\s*(.+?)\.?$/)||[])[1]||"";return `Présentation de l’enchaînement${g?" ("+g.trim()+")":""} devant le groupe classe.`}
 /* Plan du cycle : renvoie la liste des 10 séances (ou 12) */
-function cyclePlan(niv,fam){if(!isCyc(niv,fam))return null;const C=CYCLE[niv][fam],P=PROFIL[niv],ref=refOf(niv,fam);
+function cyclePlan(niv,fam,aps){if(!isCyc(niv,fam))return null;const C=(aps&&typeof CYCLE_APS!=="undefined"&&CYCLE_APS[aps]&&CYCLE_APS[aps](niv))||CYCLE[niv][fam],P=PROFIL[niv],ref=refOf(niv,fam);
  const out=[{n:1,type:"diag",seq:"Évaluation diagnostique",verbe:"Prévoir",contenu:`le projet du cycle à partir du niveau de pratique des élèves observé par la situation de référence (${ref.replace(/\.$/,"")})`,critere:"en observant tous les élèves à l’aide d’une fiche d’observation"}];
- C.it.forEach((x,i)=>out.push({n:i+2,type:"app",seq:C.seq[i<4?0:1],verbe:x[0],contenu:x[1],unite:x[2],m:x[3],critere:`avec au moins ${P.ratio} ${x[2]}`}));
+ C.it.forEach((x,i)=>out.push({n:i+2,type:"app",seq:C.seq[i<4?0:1],verbe:x[0],contenu:x[1],unite:x[2],m:x[3],crit:x[4]||"",critere:x[4]||`avec au moins ${P.ratio} ${x[2]}`}));
  out.push({n:10,type:"som",seq:"Évaluation sommative",verbe:"Évaluer",contenu:`le niveau atteint par les élèves au regard de l’OTC par la situation de référence (${ref.replace(/\.$/,"")})`,critere:"en évaluant tous les élèves selon la grille d’évaluation du cycle"});
  return out}
-function planFor(niv,fam,n,len){const p=cyclePlan(niv,fam);if(!p)return null;n=parseInt(n)||1;len=parseInt(len)||10;
+function planFor(niv,fam,n,len,aps){const p=cyclePlan(niv,fam,aps);if(!p)return null;n=parseInt(n)||1;len=parseInt(len)||10;
  if(len===12){const map=[0,1,2,3,4,4,5,6,7,8,8,9];const k=map[Math.min(Math.max(n,1),12)-1];return Object.assign({},p[k],{n,consol:n===6||n===11})}
  if(n>=1&&n<=10)return p[n-1];return Object.assign({},p[9],{n})}
-function cycleList(f){const len=parseInt(f.cycleLen)||10;return Array.from({length:len},(_,i)=>planFor(f.niveau,f.famille,i+1,len))}
+function cycleList(f){const len=parseInt(f.cycleLen)||10;return Array.from({length:len},(_,i)=>planFor(f.niveau,f.famille,i+1,len,f.aps))}
 /* Applique la séance n du plan à la fiche f (en-tête conservé) */
 function applyPlan(f,n){if(BANK[f.aps])return genFiche(f,{n});const niv=f.niveau,fam=f.famille,s=planFor(niv,fam,n);if(!s)return false;
  const P=PROFIL[niv],T=FAMT[fam],R=rapportOf(niv,fam),ref=refOf(niv,fam);
@@ -1235,8 +1235,8 @@ function checkCoherence(f){
  // 5. Situations ← but / objectif
  const sits=fd.situations.filter(s=>(s.conditions+s.criteres).trim());
  if(!sits.length)add("warn","Situations","Aucune situation décrite dans la phase fondamentale.");
- sits.forEach((s,i)=>{const sh=shared(s.titre+" "+s.conditions+" "+s.criteres,obj+" "+fd.but);
-  sh.length?add(true,`Situation ${i+1} ← but`,`La situation ${i+1} travaille l’objectif (${sh.slice(0,3).join(", ")}).`):add("warn",`Situation ${i+1} ← but`,`La situation ${i+1} ne semble pas servir le but / l’objectif : reformule ses critères de réalisation avec les mots de l’objectif.`)});
+ sits.forEach((s,i)=>{const sh=shared([s.titre,s.conditions,s.criteres,s.simplifier,s.complexifier].join(" "),obj+" "+fd.but+" "+f.objSeq);
+  sh.length||isEval||s._ref?add(true,`Situation ${i+1} ← but`,sh.length?`La situation ${i+1} travaille l’objectif (${sh.slice(0,3).join(", ")}).`:`La situation ${i+1} (situation de référence / match à thème) réinvestit l’objectif.`):add("warn",`Situation ${i+1} ← but`,`La situation ${i+1} ne semble pas servir le but / l’objectif : reformule ses critères de réalisation avec les mots de l’objectif.`)});
  if(!isEval&&fd.reference.trim())add(true,"Situation de référence","Situation de référence présente.");
  else if(isEval&&!/(reference|6\s*(vs|contre)|match|epreuve|enchainement)/.test(norm(sitTxt+" "+fd.reference)))add("warn","Situation de référence","Une séance d’évaluation doit utiliser la situation de référence.");
  // 6. Critères de réussite mesurent l’objectif
@@ -1244,7 +1244,7 @@ function checkCoherence(f){
  if(!cq)add("warn","Critère quantitatif","Prévois un critère de réussite quantitatif (ex. « Au moins "+P.ratio+" … »).");
  else{const sh=shared(cq,obj);const num=/\d/.test(cq);
   if(num&&(sh.length||isEval))add(true,"Critère quantitatif ↔ objectif",`Le critère mesure l’objectif (${sh.slice(0,3).join(", ")||"évaluation"}).`);
-  else add("warn","Critère quantitatif ↔ objectif",num?"Le critère quantitatif ne mesure pas ce que vise l’objectif : utilise la même action (ex. « Au moins "+P.ratio+" "+(planFor(niv,fam,f.seance)||{}).unite+" »).":"Le critère quantitatif doit contenir un nombre ou un rapport (ex. "+P.ratio+").");
+  else add("warn","Critère quantitatif ↔ objectif",num?"Le critère quantitatif ne mesure pas ce que vise l’objectif : utilise la même action (ex. « Au moins "+P.ratio+" "+(planFor(niv,fam,f.seance,f.cycleLen,f.aps)||{}).unite+" »).":"Le critère quantitatif doit contenir un nombre ou un rapport (ex. "+P.ratio+").");
   const ro=ratioVal(obj),rc=ratioVal(cq);if(ro&&rc&&Math.abs(ro.v-rc.v)>0.01)add("warn","Même exigence","L’objectif annonce "+ro.t+" mais le critère quantitatif annonce "+rc.t+".");
   const rv=rc||ro,target=ratioVal(P.ratio).v;if(rv&&!isEval&&Math.abs(rv.v-target)>0.25)add("warn","Exigence adaptée au niveau",`L’exigence ${rv.t} est loin du repère conseillé pour ${niv} (${P.ratio}).`)}
  if(!fd.critQual.trim())add("warn","Critère qualitatif","Prévois un critère qualitatif.");
@@ -1299,7 +1299,7 @@ ed.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
   cur=first;afterSwitch(len+" fiches du cycle créées")},"Créer les fiches")}
  else if(t.id==="goCheck"){const c=$("#cohCard");if(c)c.scrollIntoView({behavior:"smooth"})}});
 
-function planCell(f,p){const b=BANK[f.aps];if(b&&b.fam===f.famille){const o=objParts(f,p,b);return `<b>${esc(o.verbe)}</b> ${esc(o.contenu)}, ${esc(o.critere)}.`}
+function planCell(f,p){const b=BANK[f.aps];if(b&&b.fam===f.famille){const o=objParts(f,p,b);if(p.type==="app"&&!o.fixed){const M=feasModel(f,3),[a2,b2]=feasPair(M.maxObj,(+o.a)/(+o.b),f.niveau);o.critere=critPhrase(o.unit,a2,b2)}return `<b>${esc(o.verbe)}</b> ${esc(o.contenu)}, ${esc(o.critere)}.`}
  return `<b>${esc(p.verbe)}</b> ${esc(p.contenu)}, ${esc(p.critere)}.`}
 /* ===================== BANQUE DE CONTENUS PAR APS SUPPORT ===================== */
 /* Gabarits de situations des sports collectifs : {B} balle, {C} cible, {Z} zone de marque, {T} tir, {R1} surnombre, {R2} quasi-égalité, {R3} égalité, {a} effectif */
@@ -1315,7 +1315,7 @@ const SC_T={
   {p:2,t:"Jeu des espaces libres",c:"{R2} : une passe est valable seulement si le receveur est dans un espace libre (à plus de 2 m d’un défenseur).",s:"Joker offensif.",x:"Réduire la largeur du terrain.",sk:"demarq",r:2},
   {p:3,t:"Match à thème",c:"{R3} vers {C} : tout but marqué après une passe reçue en mouvement compte double.",s:"Joker offensif.",x:"Défense individuelle imposée.",sk:"progress",r:3}],
  progression:[
-  {p:1,t:"Couloir de progression",c:"{R1} dans un couloir de 20 m : faire progresser {B} jusqu’à {Z} sans la perdre.",s:"Élargir le couloir ; défenseur passif.",x:"Limiter à 4 passes ; défenseur actif.",sk:"progress",r:1},
+  {p:1,t:"Couloir de progression",c:"{R1} dans un couloir de 20 m : départ de la ligne médiane, 1 point par entrée dans {Z} ; changement de rôles après chaque série.",s:"Élargir le couloir ; défenseur passif.",x:"Limiter à 4 passes ; défenseur actif.",sk:"progress",r:1},
   {p:1,t:"Montée de balle en vagues",c:"Groupes de {a} sans défenseur puis {R1} : faire avancer {B} en 4 passes maximum jusqu’à {Z}.",s:"Sans défenseur.",x:"Temps limité à 8 s.",sk:"progress",r:1},
   {p:2,t:"Gagner du terrain",c:"{R2} sur demi-terrain : 1 point par entrée dans {Z} avec la possession de {B}.",s:"Agrandir la zone de marque.",x:"Passe en retour interdite.",sk:"progress",r:2},
   {p:3,t:"Match à thème",c:"{R3} vers {C} : passe en arrière interdite dans le camp adverse.",s:"Joker offensif.",x:"Temps d’attaque limité.",sk:"progress",r:3}],
@@ -1325,9 +1325,9 @@ const SC_T={
   {p:2,t:"Attaque – finition",c:"{R2} : chaque attaque doit finir par un tir cadré en moins de 10 s vers {C}.",s:"Joker offensif.",x:"Tir dans une zone imposée du but.",sk:"tir",r:2},
   {p:3,t:"Match à thème",c:"{R3} : 1 point par tir cadré, 2 points par but marqué.",s:"Joker offensif.",x:"Tir seulement après 3 passes.",sk:"tir",r:3}],
  defense:[
-  {p:1,t:"Défense individuelle",c:"1 contre 1 dans un couloir de 10 m : le défenseur se place entre l’attaquant et {C} et cherche à récupérer {B} sans contact.",s:"Attaquant au pas.",x:"Attaquant qui peut dribbler / feinter.",sk:"def",r:1},
+  {p:1,t:"Défense individuelle",c:"1 contre 1 dans un couloir de 10 m : l’attaquant part du fond, le défenseur part devant {C} ; 1 point par balle récupérée sans contact ; changement de rôle après chaque série.",s:"Attaquant au pas.",x:"Attaquant qui peut dribbler / feinter.",sk:"def",r:1},
   {p:1,t:"Interceptions",c:"{R1} : les défenseurs se placent sur les trajectoires de passe pour intercepter {B} ; 1 point par interception.",s:"Passes lentes (lobées).",x:"Passes rapides imposées.",sk:"def",r:1},
-  {p:2,t:"Récupérer et attaquer",c:"{R2} : les défenseurs marquent 1 point par balle récupérée puis attaquent aussitôt la cible adverse.",s:"Égalité numérique.",x:"Défense en infériorité.",sk:"def",r:2},
+  {p:2,t:"Récupérer et attaquer",c:"{R2} : les défenseurs gagnent 1 point par interception puis contre-attaquent aussitôt.",s:"Égalité numérique.",x:"Défense en infériorité.",sk:"def",r:2},
   {p:3,t:"Match à thème",c:"{R3} : toute balle récupérée en défense rapporte 1 point bonus.",s:"Joker défensif.",x:"Défense de zone imposée.",sk:"def",r:3}],
  montee:[
   {p:1,t:"Contre-attaque à 2",c:"2 contre 1 sur tout le terrain : à la récupération de {B}, le défenseur devient attaquant et vise l’autre but.",s:"Défenseur retardé de 2 s.",x:"Défenseur qui revient (2 contre 2).",sk:"trans",r:1},
@@ -1385,20 +1385,20 @@ const BANK={
 /* Sports de renvoi – Volley-ball : {R2} jeu réduit, {R3} rapport du niveau */
 const RV_T={
  deplacement:[
-  {p:1,t:"Récupérer la balle lancée",c:"Par 2 de part et d’autre du filet : A lance la balle dans le camp de B, qui se déplace et la récupère avant qu’elle ne touche le sol ; 5 lancers puis changement de rôle.",s:"Lancers lents et proches.",x:"Lancers plus loin ; récupérer en touche haute.",sk:"dep",r:1},
+  {p:1,t:"Récupérer la balle lancée",c:"Par 2 de part et d’autre du filet : A lance la balle en cloche dans le camp de B, qui la bloque avant le rebond ; 5 lancers puis changement de rôle.",s:"Lancers lents et proches.",x:"Lancers plus loin ; récupérer en touche haute.",sk:"dep",r:1},
   {p:1,t:"Déplacements au signal",c:"Par 3 : déplacements avant / arrière / latéraux au signal, puis récupération d’une balle lancée par le partenaire.",s:"Signal annoncé à l’avance.",x:"Direction annoncée au dernier moment.",sk:"dep",r:1},
   {p:2,t:"Défendre son terrain",c:"{R2} : chaque équipe défend son terrain ; 1 point par balle qui tombe dans le camp adverse.",s:"Bloqué-lancé autorisé.",x:"Frappe obligatoire.",sk:"dep",r:2},
-  {p:3,t:"Match à thème",c:"{R3} : point double si la balle est récupérée après un déplacement de plus de 2 m.",s:"Rebond autorisé.",x:"Terrain agrandi.",sk:"match",r:3}],
+  {p:3,t:"Match à thème",c:"{R3} : point double pour une défense réussie après un déplacement de plus de 2 m.",s:"Rebond autorisé.",x:"Terrain agrandi.",sk:"match",r:3}],
  reception:[
   {p:1,t:"Manchette par 2",c:"Par 2 face à face (4 m) : l’un lance, l’autre renvoie en manchette dans les mains du lanceur ; 10 balles puis changement.",s:"Lancer à deux mains, court.",x:"Lancer plus loin, sur les côtés.",sk:"rec",r:1},
   {p:1,t:"Touche haute par 2",c:"Par 2 : touche haute au-dessus de la tête puis passe au partenaire ; compter les touches réussies sans faire tomber la balle.",s:"Bloquer-relancer autorisé.",x:"Enchaîner déplacement et touche haute.",sk:"rec",r:1},
   {p:2,t:"Réception – transmission",c:"{R2} : le premier contact doit envoyer la balle vers un partenaire placé près du filet.",s:"Service lancé à la main.",x:"Service par en dessous.",sk:"rec",r:2},
   {p:3,t:"Match à thème",c:"{R3} : le premier contact doit être une manchette ou une touche haute contrôlée.",s:"Rebond autorisé.",x:"Service imposé depuis le fond.",sk:"match",r:3}],
  passe:[
-  {p:1,t:"Passe haute à trois",c:"Par 3 en triangle : réception, passe haute au partenaire placé près du filet, renvoi au lanceur.",s:"Bloquer-relancer autorisé.",x:"Passe vers une cible (cerceau).",sk:"trois",r:1},
+  {p:1,t:"Passe haute à trois",c:"Par 3 en triangle (lanceur, réceptionneur, joueur près du filet) : le lanceur envoie, le réceptionneur transmet, le joueur près du filet renvoie au lanceur ; rotation des rôles toutes les 5 balles.",s:"Bloquer-relancer autorisé.",x:"Passe vers une cible (cerceau).",sk:"trois",r:1},
   {p:1,t:"Passe en cible",c:"Par 2 : passe haute vers un cerceau tenu au-dessus de la tête du partenaire à 3 m.",s:"Distance de 2 m.",x:"Distance de 4 m ; passe après déplacement.",sk:"trois",r:1},
   {p:2,t:"Jeu en 2 touches",c:"{R2} : renvoi obligatoire en 2 touches minimum ; la 2ème touche passe par le joueur près du filet.",s:"Bloqué-lancé à la 1ère touche.",x:"3 touches obligatoires.",sk:"trois",r:2},
-  {p:3,t:"Match à thème",c:"{R3} : point double si le renvoi est préparé par une passe haute.",s:"Rebond autorisé.",x:"Zone de passeur imposée.",sk:"match",r:3}],
+  {p:3,t:"Match à thème",c:"{R3} : point double si l’attaque suit une touche haute du partenaire.",s:"Rebond autorisé.",x:"Zone de passeur imposée.",sk:"match",r:3}],
  renvoi:[
   {p:1,t:"Renvoi en zone cible",c:"Par 2 de part et d’autre du filet : renvoyer la balle dans une zone matérialisée par des plots ; 10 balles puis changement.",s:"Zone cible large.",x:"Zone cible réduite ; renvoi après déplacement.",sk:"zone",r:1},
   {p:1,t:"Renvoi après déplacement",c:"Par 2 : le lanceur envoie la balle à droite ou à gauche ; le joueur se déplace et la renvoie vers le fond du camp adverse.",s:"Lancer annoncé.",x:"Lancer non annoncé.",sk:"zone",r:1},
@@ -1416,7 +1416,7 @@ const RV_T={
   {p:3,t:"Match à thème",c:"{R3} : point double pour un renvoi construit en 3 touches.",s:"Rebond autorisé.",x:"Rotation obligatoire à chaque service.",sk:"match",r:3}],
  defense:[
   {p:1,t:"Défense de terrain",c:"Un attaquant envoie la balle (lancer puis frappe) ; deux défenseurs placés en fond de terrain la récupèrent et la remontent vers le filet.",s:"Lancers à deux mains.",x:"Frappes plus rapides.",sk:"def",r:1},
-  {p:2,t:"Couvrir son terrain",c:"{R2} : chaque équipe se répartit le terrain en zones de responsabilité annoncées avant le jeu.",s:"Terrain réduit.",x:"Terrain agrandi.",sk:"def",r:2},
+  {p:2,t:"Couvrir son terrain",c:"{R2} : chaque équipe se répartit le terrain en zones de responsabilité annoncées avant le jeu ; chaque joueur défend sa zone.",s:"Terrain réduit.",x:"Terrain agrandi.",sk:"def",r:2},
   {p:2,t:"Défendre puis contre-attaquer",c:"{R2} : l’équipe qui défend une attaque adverse et marque ensuite gagne 2 points.",s:"Rebond autorisé.",x:"3 touches obligatoires.",sk:"def",r:2},
   {p:3,t:"Match à thème",c:"{R3} : point double pour une balle défendue puis renvoyée.",s:"Rebond autorisé.",x:"Terrain agrandi.",sk:"match",r:3}]
 };
@@ -1445,7 +1445,7 @@ BANK["Course de vitesse"]=atEv({rep:"(couloirs, plots, lattes)",bg:"piste",label
   {tags:["technique","rythme"],t:"Départs au signal",c:"Départs debout puis accroupis au signal sonore (sifflet, claquoir) suivis de 20 m de course ; départs en duel par 2.",r:"Réagir vite au signal ; pousser fort sur les deux jambes ; se redresser progressivement.",s:"Départ debout ; signal visuel.",x:"Départ en position basse ; départ face à un adversaire.",sk:"depart"},
   {tags:["rythme","technique"],t:"Course entre lattes",c:"Couloirs avec lattes espacées régulièrement sur 30 m : un appui entre chaque latte ; 4 passages.",r:"Appuis brefs et actifs ; genoux hauts ; regard loin devant.",s:"Lattes plus rapprochées.",x:"Lattes plus espacées ; vitesse maximale.",sk:"lattes"},
   {tags:["effort","perf"],t:"Course lancée",c:"Zone d’élan de 15 m puis 30 m chronométrés ; 4 passages avec récupération complète (marche retour).",r:"Atteindre sa vitesse maximale à l’entrée de la zone ; rester relâché ; finir la course au-delà de la ligne.",s:"Élan de 20 m.",x:"Zone chronométrée de 40 m.",sk:"course"},
-  {tags:["defi","collectif","effort"],t:"Défi par équipes",c:"Équipes de 4 : chaque coureur réalise un 40 m chronométré ; les temps sont additionnés ; rôles tournants de chronométreur, starter et juge d’arrivée.",r:"Départ au signal ; courir jusqu’après la ligne ; chronométrer au passage du buste.",s:"Distance de 30 m.",x:"Distance de 50 m.",sk:"course"},
+  {tags:["defi","collectif","effort"],t:"Défi par équipes",c:"Équipes de 4 : chaque coureur réalise un 40 m chronométré ; les temps sont additionnés pour la performance de l’équipe ; rôles tournants de chronométreur, starter et juge d’arrivée.",r:"Départ au signal ; effort maximal jusqu’après la ligne ; chronométrer au passage du buste.",s:"Distance de 30 m.",x:"Distance de 50 m.",sk:"course"},
   {g:1,tags:["perf"],t:"Course chronométrée",c:"Course de {dist} chronométrée par séries de 4 couloirs ; 2 essais ; les élèves chronométreurs notent les temps.",r:"Départ réactif ; accélération progressive ; maintien de la vitesse jusqu’à l’arrivée.",s:"Départ debout.",x:"Départ accroupi, en duel.",sk:"course"}],
  test:"Course de {dist} chronométrée (2 essais) et observation du départ et de la foulée."});
 BANK["Course de haies"]=atEv({rep:"(haies, intervalles, couloirs)",bg:"piste",label:"la course de haies",en:"en course de haies",noun:"passages de haies",
@@ -1467,7 +1467,7 @@ BANK["Relais"]=atEv({rep:"(marque de départ, zone de transmission)",bg:"piste",
  regle:"Transmettre le témoin dans la zone ; rester dans son couloir après la transmission.",
  sits:[{tags:["technique"],t:"Transmission en trottinant",c:"Par 2 en file : transmission du témoin au signal « hop » en trottinant puis en courant ; 6 transmissions.",r:"Receveur : bras tendu en arrière, paume ouverte, ne pas se retourner ; donneur : poser le témoin fermement dans la main.",s:"En marchant.",x:"En pleine vitesse.",sk:"relais"},
   {tags:["rythme","technique"],t:"Marque de départ",c:"Par 2 : le receveur part quand le donneur atteint une marque au sol (plot) placée à 6 pas ; ajuster la marque.",r:"Partir à fond au passage du donneur ; transmettre au signal dans la zone.",s:"Marque plus éloignée.",x:"Marque plus proche.",sk:"relais"},
-  {tags:["effort","perf"],t:"Transmission chronométrée",c:"Par 2 : 20 m de zone chronométrée autour de la transmission ; 4 passages.",r:"Garder la vitesse dans la zone ; transmission en bout de zone.",s:"Zone de 30 m.",x:"Zone de 20 m en départ arrêté.",sk:"relais"},
+  {tags:["effort","perf"],t:"Transmission chronométrée",c:"Par 2 : 20 m de zone chronométrée autour de la transmission ; 4 passages ; chacun note sa performance et gère son effort entre les passages.",r:"Garder la vitesse dans la zone ; transmission en bout de zone.",s:"Zone de 30 m.",x:"Zone de 20 m en départ arrêté.",sk:"relais"},
   {tags:["collectif","defi"],t:"Relais par équipes",c:"Équipes de 4 sur {dist} ; rôles de chronométreur et de juge de zone ; 2 courses.",r:"Chaque coureur respecte son couloir ; transmission dans la zone.",s:"Distance réduite.",x:"Équipes mixtes de niveau égal.",sk:"relais"},
   {g:1,tags:["perf","collectif"],t:"Relais chronométré",c:"Relais {dist} chronométré par équipes de 4 ; les juges vérifient les transmissions dans la zone.",r:"Transmissions dans la zone sans ralentir ; course dans son couloir.",s:"Zone élargie.",x:"Zone réglementaire.",sk:"relais"}],
  test:"Relais {dist} chronométré et observation des transmissions."});
@@ -1531,7 +1531,7 @@ BANK["Gymnastique au sol"]={fam:GY,bg:"tapis",maxA:4,label:"la gymnastique au so
  gen:"Course lente autour des tapis ; mobilisation articulaire (cou, épaules, poignets, hanches, chevilles) ; gainage : planche ventrale et latérale (3 × 20 s).",
  spe:["Éducatifs : roulades sur plan incliné, chandelle, planche, ATR contre le mur avec parade, sauts extension sur tapis.","Éducatifs : position groupée, roulade sur plan incliné, roue sur une ligne, pont, sauts demi-tour."],
  regle:"Parade obligatoire pour les renversements ; tapis jointifs ; un seul gymnaste à la fois.",
- pour:{rotation:"pour se confirmer dans des mouvements inhabituels",equilibre:"pour stabiliser ses positions",elements:"pour enrichir son enchaînement",liaison:"pour donner de la fluidité à son enchaînement",projet:"pour le présenter devant le groupe classe",presentation:"pour montrer la qualité de son exécution",juge:"pour améliorer la qualité des réalisations"},
+ pour:{rotation:"pour se confirmer dans des mouvements inhabituels",equilibre:"pour stabiliser ses positions",elements:"pour enrichir son enchaînement",liaison:"pour donner de la fluidité à son enchaînement",projet:"pour présenter son enchaînement devant le groupe classe",presentation:"pour montrer la qualité de son exécution",juge:"pour améliorer la qualité des réalisations"},
  cues:{rotation:"Menton sur la poitrine ; dos rond ; mains posées à plat largeur d’épaules ; se relever sans les mains.",
   equilibre:"Corps gainé ; regard fixe ; bras tendus ; tenir la position 3 secondes.",
   elements:"Amplitude du mouvement ; jambes tendues et serrées ; pointes de pieds tendues ; position finale tenue.",
@@ -1603,11 +1603,11 @@ function compCats(t){return COMPCAT.filter(c=>c.re.test(t))}
  V.spe.push("Gammes sur 20 m ; départs debout, assis et accroupis au signal sur 15 m (G) / 10 m (F).");
  V.iniCons="Maintenir une posture stable au départ ; être prêt à réagir dès le signal ; respecter son couloir pour éviter les collisions.";
  V.sits.unshift(
-  {tags:["technique","rythme"],t:"Réaction aux signaux",c:"Deux colonnes repérées par des plots de couleur différente. L’enseignant montre une couleur (signal visuel) puis frappe dans les mains (signal auditif) : la colonne concernée part en sprint jusqu’à la ligne d’arrivée (20 m G / 15 m F).",r:"Réagir dès le signal ; pousser fort sur les deux jambes ; regard vers l’avant.",s:"Signal unique et annoncé.",x:"Varier les signaux ; départ en duel par 2.",sk:"depart",
+  {tags:["technique","rythme"],t:"Réaction aux signaux",c:"Deux colonnes repérées par des plots de couleur différente. L’enseignant montre une couleur (signal visuel) puis frappe dans les mains (signal auditif) : la colonne concernée part en sprint jusqu’à la ligne d’arrivée (20 m G / 15 m F).",r:"Réagir dès le signal ; pousser fort sur les deux jambes ; organiser son corps : bras et jambes coordonnés, foulée rapide ; regard vers l’avant ; le binôme observe la technique du départ.",s:"Signal unique et annoncé.",x:"Varier les signaux ; départ en duel par 2.",sk:"depart",
    q:"Partir dès le signal de sa couleur, {q4} fois sur 4.",o:"Retour en marchant par l’extérieur des couloirs après chaque course.",sec:"Attention aux autres coureurs au moment du retour."},
-  {tags:["technique"],t:"Départs variés",c:"Piste de 20 m (G) / 15 m (F), 4 couloirs dans chaque sens : départs debout, assis puis accroupis au signal ; les élèves alternent les positions à chaque passage.",r:"Être immobile avant le signal ; se redresser progressivement ; premières foulées courtes et rapides.",s:"Départ debout uniquement.",x:"Départ accroupi réglementaire ; réduire le temps de réaction.",sk:"depart",
+  {tags:["technique"],t:"Départs variés",c:"Piste de 20 m (G) / 15 m (F), 4 couloirs dans chaque sens : départs debout, assis puis accroupis au signal ; les élèves alternent les positions à chaque passage.",r:"Être immobile avant le signal ; organiser les mouvements des bras et des jambes selon la technique de départ ; se redresser progressivement ; premières foulées courtes et rapides.",s:"Départ debout uniquement.",x:"Départ accroupi réglementaire ; réduire le temps de réaction.",sk:"depart",
    q:"Réaliser un départ réglementaire {q5} fois sur 5.",o:"Chaque vague de 4 part au signal du starter ; la vague suivante se prépare derrière la ligne."},
-  {tags:["technique","rythme"],t:"Passage sous l’élastique",c:"Piste de 30 m : un élastique tendu à 1,40 m (G) / 1,20 m (F) du sol est placé à 5 m de la ligne de départ. Les élèves partent au signal, passent sous l’élastique sans trop ralentir, se redressent rapidement et sprintent jusqu’à l’arrivée.",r:"Rester bas au départ ; redressement progressif du buste ; accélération continue jusqu’à la ligne.",s:"Élever l’élastique.",x:"Abaisser l’élastique ; éloigner l’élastique de la ligne de départ.",sk:"course",
+  {tags:["technique","rythme"],t:"Passage sous l’élastique",c:"Piste de 30 m : un élastique tendu à 1,40 m (G) / 1,20 m (F) du sol est placé à 5 m de la ligne de départ. Les élèves partent au signal, passent sous l’élastique sans trop ralentir ni rompre leur rythme, se redressent rapidement et sprintent jusqu’à l’arrivée.",r:"Rester bas au départ (phase de mise en action) ; redressement progressif du buste (posture) ; appuis actifs et foulée rapide ; accélération continue jusqu’à la ligne.",s:"Élever l’élastique.",x:"Abaisser l’élastique ; éloigner l’élastique de la ligne de départ.",sk:"course",
    q:"Franchir l’élastique et atteindre l’arrivée en moins de 5 s, {q5} fois sur 5.",o:"Revenir calmement au bord de la piste après chaque course.",sec:"Les élèves qui tiennent l’élastique le lâchent en cas de contact."});
  const L=BANK["Saut en longueur"];L.distG=["10 m","12 m","15 m"];L.distF=["8 m","10 m","10 m"];
  L.iniCons="Travailler individuellement ; s’organiser sur le passage ; regarder le sautoir avant de s’élancer.";
@@ -1617,7 +1617,7 @@ function compCats(t){return COMPCAT.filter(c=>c.re.test(t))}
    q:"5 passages pour chaque élève sans piétinement.",o:"Deux groupes (garçons / filles) ; chaque groupe travaille selon ses propres capacités."},
   {tags:["technique"],t:"Franchir l’élastique",c:"Un élastique tenu par deux élèves aux deux extrémités de la fosse est placé à 2 m (G) / 1,50 m (F) de la planche. Après une course d’élan, l’élève cherche la hauteur à l’impulsion pour franchir l’élastique sans le toucher.",r:"Appel sur un seul pied ; genou libre et bras vers le haut ; réception sur les deux pieds.",s:"Abaisser l’élastique ; élan réduit.",x:"Élever l’élastique ; l’éloigner de la planche.",sk:"saut",
    q:"Franchir l’élastique sans le toucher {q4} fois sur 4.",o:"Rotation des élèves qui tiennent l’élastique après chaque série.",sec:"Lâcher l’élastique en cas de contact avec le sauteur."},
-  {tags:["perf","defi"],t:"Zones de points",c:"Le sautoir est divisé en 3 zones : A = 1 point, B = 2 points, C = 3 points. Après une course d’élan, chaque élève cherche à atteindre la zone la plus loin ; l’observateur annonce le score.",r:"Course accélérée ; impulsion vers le haut et l’avant ; réception loin devant.",s:"Zones plus proches de la planche.",x:"Élastique à franchir avant la zone ; zones plus éloignées.",sk:"saut",
+  {tags:["perf","defi"],t:"Zones de points",c:"Le sautoir est divisé en 3 zones : A = 1 point, B = 2 points, C = 3 points. Après une course d’élan, chaque élève cherche à atteindre la zone la plus loin pour battre son record ; l’observateur juge l’essai et annonce le score.",r:"Course accélérée ; impulsion vers le haut et l’avant ; réception loin devant.",s:"Zones plus proches de la planche.",x:"Élastique à franchir avant la zone ; zones plus éloignées.",sk:"saut",
    q:"Atteindre la zone B ou C, {q4} fois sur 4.",o:"Travail en binôme : l’un saute, l’autre observe et annonce le score, puis on inverse."},
   {tags:["technique"],t:"Ballon suspendu",c:"Deux ballons sont suspendus sur un fil tenu par deux élèves au-dessus de la fosse. Après une course d’élan et un appel sur tremplin, l’élève touche le ballon à deux mains pendant la suspension puis ramène les jambes tendues vers l’avant pour la réception.",r:"Ouverture du corps pendant la suspension ; fermeture rapide (le ramené) ; jambes tendues à la réception.",s:"Abaisser les ballons.",x:"Élever les ballons ; supprimer le tremplin.",sk:"saut",
    q:"Toucher le ballon 2 fois sur 4 et se réceptionner sur les deux pieds.",o:"Les élèves dispensés tiennent le fil ; rotation après chaque série."},
@@ -1763,44 +1763,44 @@ function gyApply(f,s,o,bank,ctx,fd,cats,v,n){const niv=f.niveau,ag=gyIsAgres(ban
  let sits=[],els=[],pan=[],qx=[];
  const atl=(i,e,cond,crit,si,cx)=>({titre:`Atelier ${i+1} : ${e?e.n+" ("+e.d+")":cond.t}`,conditions:cond.c,criteres:crit,simplifier:si||"",complexifier:cx||""});
  if(s.type==="diag"){const Ls=[...new Set((compo.match(/[A-E]/g)||["A"]))];const db=gyDB(bank);
-  Ls.slice(0,3).forEach((l,i)=>{const list=db.filter(e=>e.d===l).slice(0,3);els.push(list[0]);sits.push({titre:`Atelier ${i+1} : éléments de difficulté ${l}`,conditions:(i?"":`But : prévoir le projet du cycle à partir du niveau de chaque élève en ${bank.label.replace(/^(la|le) /,"")}. `)+`${list.map(e=>gyLc(e.n)).join(" ; ")} : 2 essais par élément ; l’observateur code R (réussi) / NR (non réussi).`,criteres:"Élément réussi : réalisé sans chute, en sécurité, avec la forme demandée.",simplifier:"",complexifier:""})});
+  Ls.slice(0,3).forEach((l,i)=>{const list=db.filter(e=>e.d===l).slice(0,3);els.push(list[0]);sits.push({titre:`Atelier ${i+1} : éléments de difficulté ${l}`,conditions:`${list.map(e=>gyLc(e.n)).join(" ; ")} : 2 essais par élément ; l’observateur code R (réussi) / NR (non réussi).`,criteres:"Élément réussi : réalisé sans chute, en sécurité, avec la forme demandée.",simplifier:"",complexifier:""})});
   if(sits.length<3)sits.push({titre:`Atelier ${sits.length+1} : liaison libre`,conditions:"Enchaîner 3 éléments maîtrisés sur une longueur de tapis ; l’observateur note les arrêts et les pas supplémentaires.",criteres:"Liaison sans arrêt ; position finale tenue 2 s.",simplifier:"",complexifier:""});
   fd.consOrga="Trois groupes (exécutants, observateurs, organisateurs) ; un groupe par atelier, rotation au signal.\nBinômes A.A’ – B.B’ : l’un passe, l’autre code la fiche d’observation.";
   fd.critQuant="Tous les élèves (100 %) passent chaque atelier et sont observés.\nNiveau de départ relevé : nombre d’éléments réussis par difficulté.";
   pan=sits.map((x,i)=>({label:x.titre,sk:gySk(bank,els[i]||els[0],i,"diag")}))}
  else if(s.type==="som"){sits=[{titre:"Atelier 1 : essais d’échauffement par agrès / par difficulté",conditions:"Chaque groupe passe une fois ses éléments les plus difficiles avec parade avant le test.",criteres:"Éléments réalisés en sécurité, parade active.",simplifier:"",complexifier:""},
-   {titre:`Test bilan : enchaînement ${compo} devant un jury d’élèves`,conditions:`But : évaluer le niveau atteint de chaque élève en ${bank.label.replace(/^(la|le) /,"")}. Trois groupes tournent : gymnastes, juges (2 juges d’exécution, 1 juge de difficulté), pareurs / organisateurs.`,criteres:"Note /20 = difficulté /8 (éléments réussis selon la composition imposée) + exécution /12 (forme, amplitude, liaisons, tenue ; chute −1 pt, arrêt −0,5 pt).",simplifier:"",complexifier:""}];
+   {titre:`Test bilan : enchaînement ${compo} devant un jury d’élèves`,conditions:`Trois groupes tournent : gymnastes, juges (2 juges d’exécution, 1 juge de difficulté), pareurs / organisateurs.`,criteres:"Note /20 = difficulté /8 (éléments réussis selon la composition imposée) + exécution /12 (forme, amplitude, liaisons, tenue ; chute −1 pt, arrêt −0,5 pt).",simplifier:"",complexifier:""}];
   fd.consOrga="Ordre de passage affiché ; rotation des rôles gymnaste / juge / pareur après chaque groupe.\nLes juges notent sans communiquer, puis on calcule la moyenne.";
   fd.critQuant="Tous les élèves (100 %) sont notés : difficulté /8 + exécution /12.\nÉcart entre les juges inférieur à 1 point.";
   pan=[{label:"Échauffement par atelier",sk:gyCircuit(gyPick(bank,"AB",null,k).map(e=>gyShort(e.n)))},{label:"Test bilan – jury d’élèves",sk:gyJury(bank)}]}
  else if(m.m==="elts"){els=gyPick(bank,m.d,m.f,k).sort((a,b)=>a.d.localeCompare(b.d));
-  sits=els.map((e,i)=>atl(i,e,{c:(i?"":sb)+`${ex(e)} : 4 passages par élève (élément ${e.d}).`+(i||!m.obs?"":" "+obsTxt)},e.cr,e.s,e.x));
+  sits=els.map((e,i)=>atl(i,e,{c:`${ex(e)} : 4 passages par élève (élément ${e.d}).`+(i||!m.obs?"":" "+obsTxt)},e.cr,e.s,e.x));
   const gfe=els.find(e=>e.gf);qx=[`Élément validé s’il est réussi ${q5} fois sur 5 (${q5}/5).`,gfe?`${gyShort(gfe.n)} – ${gfe.gf}`:`${pct} des élèves valident les éléments ${[...new Set(els.map(e=>e.d))].join(", ")}.`]}
  else if(m.m==="liai"){els=gyPick(bank,m.d,null,k);const e2=gyPick(bank,m.d,null,k+1);
-  if(ag){const db=gyDB(bank);sits=els.map((e,i)=>{const e2=(gyNear(db,e.d,x=>x.f===e.f&&x.n!==e.n)[0])||e,sa=e.f==="saut";return atl(i,null,{t:sa?`${GY_APP[e.f]} – élan, ${gyLc(gyShort(e.n))} et réception`:`${GY_APP[e.f]} – liaison ${gyLc(gyShort(e.n))} + ${gyLc(gyShort(e2.n))}`,c:(i?"":sb)+(sa?`${GY_INST[e.f]} : enchaîner course d’élan, appel deux pieds, ${gyLc(e.n)} et réception stabilisée ; 4 passages.`:`${GY_INST[e.f]} : enchaîner ${gyLc(e.n)} puis ${gyLc(e2.n)} sans arrêt ; 4 passages.`)},e.f==="saut"?"Élan régulier, appel deux pieds ; enchaîner sans arrêt ; réception stabilisée 2 s.":"Enchaîner sans arrêt ni chute ; garder le gainage ; finir en position tenue 2 s.",e.s,e.x)})}
-  else sits=[atl(0,null,{t:`liaison ${gyLc(gyShort(els[0].n))} + ${gyLc(gyShort(els[1].n))}`,c:sb+`Sur une longueur de tapis : enchaîner ${gyLc(els[0].n)} + ${gyLc(els[1].n)} sans arrêt ni pas supplémentaire ; 4 passages.`},"Enchaîner sans arrêt ; garder l’alignement ; finir en position tenue 2 s.","Deux éléments A seulement.","Changement de rythme (lent / rapide)."),
+  if(ag){const db=gyDB(bank);sits=els.map((e,i)=>{const e2=(gyNear(db,e.d,x=>x.f===e.f&&x.n!==e.n)[0])||e,sa=e.f==="saut";return atl(i,null,{t:sa?`${GY_APP[e.f]} – élan, ${gyLc(gyShort(e.n))} et réception`:`${GY_APP[e.f]} – liaison ${gyLc(gyShort(e.n))} + ${gyLc(gyShort(e2.n))}`,c:(sa?`${GY_INST[e.f]} : enchaîner course d’élan, appel deux pieds, ${gyLc(e.n)} et réception stabilisée ; 4 passages.`:`${GY_INST[e.f]} : enchaîner ${gyLc(e.n)} puis ${gyLc(e2.n)} sans arrêt ; 4 passages.`)},e.f==="saut"?"Élan régulier, appel deux pieds ; enchaîner sans arrêt ; réception stabilisée 2 s.":"Enchaîner sans arrêt ni chute ; garder le gainage ; finir en position tenue 2 s.",e.s,e.x)})}
+  else sits=[atl(0,null,{t:`liaison ${gyLc(gyShort(els[0].n))} + ${gyLc(gyShort(els[1].n))}`,c:`Sur une longueur de tapis : enchaîner ${gyLc(els[0].n)} + ${gyLc(els[1].n)} sans arrêt ni pas supplémentaire ; 4 passages.`},"Enchaîner sans arrêt ; garder l’alignement ; finir en position tenue 2 s.","Deux éléments A seulement.","Changement de rythme (lent / rapide)."),
    atl(1,null,{t:`liaison ${gyLc(gyShort(e2[0].n))} + ${gyLc(gyShort(els[2].n))}`,c:`Même installation : enchaîner ${gyLc(e2[0].n)} + ${gyLc(els[2].n)} ; le pareur se place près de l’élément le plus difficile.`},"Liaison fluide ; amplitude conservée ; aucun appui supplémentaire.","Pause tenue entre les éléments.","Liaison avec un saut ou un demi-tour."),
    atl(2,null,{t:"enchaînement partiel (3 éléments)",c:`Enchaîner ${els.map(e=>gyLc(gyShort(e.n))).join(" + ")} devant son binôme, qui note les arrêts.`},"Rythme régulier ; aucun arrêt ; salut au début et à la fin.","Deux éléments.","Quatre éléments avec un changement de direction.")];
   qx=[`Liaison validée si elle est réussie ${q5} fois sur 5 (${q5}/5).`,`${pct} des élèves enchaînent sans arrêt.`]}
  else if(m.m==="proj"){els=gyPick(bank,(compo.match(/[A-E]/g)||["A"]).filter((x,i,a)=>a.indexOf(x)===i).join(""),null,k);
-  sits=[atl(0,null,{t:"fiche de composition",c:sb+`Par binômes : choisir sur la fiche ses éléments (${compo}) et ses liaisons parmi les éléments maîtrisés.`},"Respecter la composition imposée ; prévoir des éléments réussis en sécurité.","Choix guidé par l’enseignant.","Prévoir un changement de rythme et de direction."),
+  sits=[atl(0,null,{t:"fiche de composition",c:`Par binômes : choisir sur la fiche ses éléments (${compo}) et ses liaisons parmi les éléments maîtrisés.`},"Respecter la composition imposée ; prévoir des éléments réussis en sécurité.","Choix guidé par l’enseignant.","Prévoir un changement de rythme et de direction."),
    atl(1,null,{t:"essai des éléments choisis",c:`Par atelier (${els.map(e=>gyLc(gyShort(e.n))).join(", ")}) : 3 passages de chaque élément choisi avec parade.`},"Exécution correcte de chaque élément ; parade active.","Élément de difficulté inférieure.","Élément enchaîné avec le suivant."),
    atl(2,null,{t:"répétition de l’enchaînement",c:"Répéter l’enchaînement complet 3 fois ; le binôme vérifie la fiche de composition."},"Enchaînement complet sans arrêt ; liaisons prévues respectées.","Enchaînement en deux parties.","Enchaînement avec un rythme imposé.")];
   qx=[`Fiche de composition complète pour 100 % des élèves.`,`Enchaînement réalisé ${q5} fois sur 5 sans arrêt.`]}
  else if(m.m==="ench"){els=gyPick(bank,(compo.match(/[A-E]/g)||["A"]).filter((x,i,a)=>a.indexOf(x)===i).join(""),null,k);
-  sits=[atl(0,null,{t:"début de l’enchaînement",c:sb+`Enchaîner les premiers éléments de la composition (${compo}) : salut, ${gyLc(els[0].n)} puis la liaison prévue ; 4 passages.`},"Salut tenu ; amplitude ; liaison sans pas supplémentaire.","Éléments séparés.","Avec un changement de rythme."),
+  sits=[atl(0,null,{t:"début de l’enchaînement",c:`Enchaîner les premiers éléments de la composition (${compo}) : salut, ${gyLc(els[0].n)} puis la liaison prévue ; 4 passages.`},"Salut tenu ; amplitude ; liaison sans pas supplémentaire.","Éléments séparés.","Avec un changement de rythme."),
    atl(1,null,{t:"fin de l’enchaînement",c:`Enchaîner ${els.slice(1).map(e=>gyLc(e.n)).join(" + ")} et la position finale ; parade sur l’élément le plus difficile.`},"Forme correcte ; position finale tenue 2 s.","Élément de difficulté inférieure.","Fin enchaînée sans pause."),
    atl(2,null,{t:"enchaînement complet observé",c:obsTxt},"Éléments réussis, arrêts et chutes relevés sur la fiche.","Enchaînement en deux parties.","Enchaînement noté sur 20.")];
   qx=[`Enchaînement complet réussi ${q5} fois sur 5 sans chute.`,`${pct} des élèves présentent la composition ${compo}.`]}
  else{/* jury */els=gyPick(bank,(compo.match(/[A-E]/g)||["A"]).filter((x,i,a)=>a.indexOf(x)===i).join(""),null,k);
-  sits=[atl(0,null,{t:"répétition par atelier",c:sb+`Répéter les éléments les plus difficiles (${els.map(e=>gyLc(gyShort(e.n))).join(", ")}) avec parade.`},"Éléments réalisés en sécurité, forme correcte.","Parade renforcée.","Éléments enchaînés deux par deux."),
+  sits=[atl(0,null,{t:"répétition par atelier",c:`Répéter les éléments les plus difficiles (${els.map(e=>gyLc(gyShort(e.n))).join(", ")}) avec parade.`},"Éléments réalisés en sécurité, forme correcte.","Parade renforcée.","Éléments enchaînés deux par deux."),
    atl(1,null,{t:`présentation devant un jury d’élèves`,c:`Chaque gymnaste présente son enchaînement (${compo}) ; 3 juges notent difficulté et exécution ; rotation des rôles.`},"Salut au début et à la fin ; sans chute ; amplitude et rythme.","Enchaînement réduit.","Enchaînement complet avec rythme imposé."),
-   atl(2,null,{t:"retour du jury",c:"Le jury donne un point fort et un point faible ; le gymnaste corrige et refait l’élément."},"Correction visible.","Un seul critère observé.","Deux critères corrigés.")];
+   atl(2,null,{t:"retour du jury",c:"Le jury donne un point fort et un point faible sur la qualité de réalisation ; le gymnaste corrige et refait l’élément."},"Correction visible.","Un seul critère observé.","Deux critères corrigés.")];
   qx=[`Note de difficulté conforme à la composition ${compo} pour ${pct} des élèves.`,"Écart entre les juges inférieur à 1 point."]}
- if(s.type==="app"){sits.forEach((x,i)=>{if(i&&!shared(x.titre+" "+x.conditions+" "+x.criteres,`${o.verbe} ${o.contenu}`).length)x.conditions=sb+x.conditions});fd.situations=sits;
+ if(s.type==="app"){fd.situations=sits;
   const ren=els.find(e=>/Pareur|pareurs/.test(e.par)&&(e.f==="ren"||ag))||els.find(e=>/areur/.test(e.par))||els[0];
   fd.consSecu=`${bank.regle} Parade : ${lcfirst(ren.par).replace(/\.$/,"")}. Cheveux attachés, sans bijoux.`+cats.filter(c=>c.secu).map(c=>" "+c.secu).join("");
-  fd.consOrga=["Trois groupes, un par atelier ; rotation au signal toutes les 8 min (G1 → G2 → G3).","Rôles tournants : exécutant, pareur, observateur (binômes A.A’ – B.B’ : le partenaire pare, observe et conseille avec la fiche d’observation)."].concat(cats.filter(c=>c.orga&&c.k!=="roles"&&c.k!=="obs").map(c=>c.orga).slice(0,2)).join("\n");
+  fd.consOrga=[`Trois groupes, un par atelier ; rotation au signal toutes les ${Math.floor(feasModel(f,3).Dsit)} min (G1 → G2 → G3).`,"Rôles tournants : exécutant, pareur, observateur (binômes A.A’ – B.B’ : le partenaire pare, observe et conseille avec la fiche d’observation)."].concat(cats.filter(c=>c.orga&&c.k!=="roles"&&c.k!=="obs").map(c=>c.orga).slice(0,2)).join("\n");
   const q=[`Au moins ${o.a} ${o.unit} sur ${o.b} (${o.a}/${o.b}).`].concat(qx);fd.critQuant=[...new Set(q)].slice(0,3).join("\n");
   pan=[{label:"Circuit de 3 ateliers – rotation",sk:gyCircuit(sits.map((x,i)=>els[i]?gyShort(els[i].n):x.titre.replace(/^Atelier \d+ : /,"").split(/\s+/).slice(0,3).join(" ")))}].concat(sits.slice(0,3).map((x,i)=>({label:x.titre,sk:gySk(bank,els[i]||els[0],i,m.m)})))}
  else{fd.situations=sits;fd.consSecu=`${bank.regle} Parade assurée par un camarade formé ; cheveux attachés, sans bijoux.`+cats.filter(c=>c.secu).map(c=>" "+c.secu).join("")}
@@ -1841,11 +1841,123 @@ function drawLegendGY(x,ox,oy,w,h){x.save();x.fillStyle="#fff";x.fillRect(ox,oy,
  x.fillStyle="#3d7cc9";x.fillRect(ox+20,r2-6,40,12);tx("Tapis",ox+66,r2+1);
  x.strokeStyle="#7b1fa2";x.lineWidth=2.2;x.setLineDash([6,4]);x.beginPath();x.moveTo(ox+120,r2+1);x.lineTo(ox+165,r2+1);x.stroke();x.setLineDash([]);tx("Trajet",ox+172,r2+1);
  x.strokeStyle="#111";x.beginPath();x.moveTo(ox+235,r2+1);x.lineTo(ox+278,r2+1);x.stroke();x.fillStyle="#111";x.beginPath();x.moveTo(ox+284,r2+1);x.lineTo(ox+276,r2-4);x.lineTo(ox+276,r2+6);x.closePath();x.fill();tx("Rotation / élément",ox+290,r2+1);x.restore()}
+/* ===================== OBJECTIFS « ÉLÈVE » ET FAISABILITÉ DES CRITÈRES ===================== */
+/* Modèle de faisabilité : nombre d’essais possibles par élève (ou par équipe) pendant la partie fondamentale.
+   P = postes / couloirs / ateliers qui fonctionnent en même temps ; t = minutes par essai (passage + retour / récupération). */
+const FEAS_AT={"Course de vitesse":{P:6,t:0.5},"Course de haies":{P:6,t:0.5},"Relais":{P:6,t:0.75},"Saut en longueur":{P:6,t:0.35},"Saut en hauteur":{P:6,t:0.35},"Lancer de poids":{P:6,t:0.35},"Course d'endurance":{run:1,t:5}};
+function feasModel(f,nSits){const bank=BANK[f.aps]||{},fam=bank.fam||f.famille,fd=f.phases.fond;
+ const N=Math.max(40,(parseInt(f.effG)||0)+(parseInt(f.effF)||0));
+ const D=parseInt((String(fd.duree||"35").match(/\d+/)||["35"])[0])||35;
+ const nS=Math.max(1,nSits||(fd.situations||[]).filter(s=>(s.conditions||"").trim()).length||3),tr=2;
+ const Deff=D-tr*(nS-1),Dsit=Math.floor(Deff/nS*10)/10;let t,load,unit,how;
+ if(fam===SC){const grp=Math.ceil(N/6),sp=4;t=0.5;load=Math.ceil(grp/sp);unit="attaques par équipe";how=`${grp} groupes de 6 sur ${sp} espaces, ${load} groupes par espace, 30 s par attaque`}
+ else if(fam===RV){const P=10;t=0.3;load=N/P;unit="essais par élève";how=`${P} joueurs actifs en même temps (terrains réduits), 18 s par essai`}
+ else if(fam===GY){const P=6;t=0.25;load=N/P;unit="passages par élève";how=`3 ateliers × 2 postes = ${P} gymnastes en même temps, 15 s par passage`}
+ else{const m=FEAS_AT[f.aps]||{P:6,t:0.5};if(m.run){t=m.t;load=1;unit="fractions";how="toute la classe court en même temps, 5 min par fraction (course + récupération)"}
+  else{t=m.t;load=N/m.P;unit="essais par élève";how=`${m.P} couloirs / postes en même temps, ${Math.round(m.t*60)} s par essai`}}
+ const cap=x=>Math.max(0,Math.floor(x+1e-9));
+ return{N,D,nS,Deff,Dsit,t,load,unit,how,maxObj:cap(Deff/(t*load)),maxSit:cap(Dsit/(t*load))}}
+function feasPair(max,r,niv){const pref=["1BAC","2BAC","TC"].includes(niv)?6:5;let b=Math.max(2,Math.min(pref,max));const a=Math.min(b-1,Math.max(Math.ceil(b/2),Math.round(r*b)));return[Math.max(1,a),b]}
+const FEAS_W="essais|passages|courses|sauts|lancers|répétitions|tentatives|attaques|départs|services|fractions|séries";
+const FEAS_RE={frac:/(\d+)((?:\s+[^\s\d.;:\n()]+){0,7}?)\s+sur\s+(\d+)\b(?!\s*(?:m\b|cm|kg|min|s\b|%|mètres|secondes))/g,par:/\((\d+)\/(\d+)\)/g,cnt:new RegExp(`\\b(\\d+) (${FEAS_W})\\b`,"g"),rep:/\b(\d+) × (\d+(?:,\d+)?) min\b/g};
+/* Ramène les nombres d’essais d’un texte à ce que permet la durée */
+function feasFix(s,max,niv,D){if(!s)return s;s=String(s);
+ s=s.replace(FEAS_RE.frac,(m,a,mid,b)=>{if(+b<=max)return m;const[a2,b2]=feasPair(max,+a/+b,niv);return `${a2}${a2===1?mid.replace(/(\S)s\b/g,"$1"):mid} sur ${b2}`});
+ s=s.replace(FEAS_RE.par,(m,a,b)=>{if(+b<=max)return m;const[a2,b2]=feasPair(max,+a/+b,niv);return `(${a2}/${b2})`});
+ s=s.replace(FEAS_RE.cnt,(m,n,w)=>+n>max?`${Math.max(2,max)} ${w}`:m);
+ if(D)s=s.replace(FEAS_RE.rep,(m,n,d)=>{const dd=parseFloat(d.replace(",","."));const k=Math.max(1,Math.floor(D/(dd+1)));return +n>k?`${k} × ${d} min`:m});
+ return s}
+/* Audit : liste des critères / consignes impossibles à tenir dans la durée */
+function feasAudit(f){const M=feasModel(f),bad=[],fd=f.phases.fond;
+ const chk=(txt,D,where)=>{if(!txt)return;String(txt).replace(FEAS_RE.frac,(m,a,mid,b)=>{if(+b*M.t*M.load>D+1e-6)bad.push(`${where}: « ${m.trim()} » (${b} × ${M.t} min × ${(+M.load.toFixed(2))} > ${D} min)`);return m});
+  String(txt).replace(FEAS_RE.par,(m,a,b)=>{if(+b*M.t*M.load>D+1e-6)bad.push(`${where}: ${m}`);return m});
+  String(txt).replace(FEAS_RE.cnt,(m,n)=>{if(+n*M.t*M.load>D+1e-6)bad.push(`${where}: « ${m} »`);return m});
+  String(txt).replace(FEAS_RE.rep,(m,n,d)=>{if(+n*(parseFloat(d.replace(",","."))+1)>D+1e-6)bad.push(`${where}: « ${m} »`);return m})};
+ chk(objSentence(f),M.Deff,"objectif");const q=String(fd.critQuant||"").split("\n");chk(q[0],M.Deff,"critère quantitatif");q.slice(1).forEach(l=>chk(l,M.Dsit,"critère S"));
+ fd.situations.forEach((s,i)=>{chk(s.conditions,M.Dsit,`situation ${i+1}`);chk(s.criteres,M.Dsit,`situation ${i+1}`)});chk(fd.consOrga,M.Dsit,"consignes");chk(fd.consSecu,M.Dsit,"consignes");
+ return bad}
+/* Les conditions de réalisation ne doivent pas réécrire le but */
+const BUT_ORGA="situation référence contre terrain demi-terrain réduit part autre filet groupe groupes équipe espace atelier ateliers tournants parade camarade binôme observateur";
+function butRepeat(f){const fd=f.phases.fond,but=String(fd.but||"").replace(/\.$/,"").trim(),X=stems(BUT_ORGA+" "+((BANK[f.aps]||{}).label||f.aps)),B=new Set([...stems(but)].filter(x=>!X.has(x))),out=[];if(!but)return out;
+ fd.situations.forEach((s,i)=>{const c=String(s.conditions||"");let worst=0;
+  c.split(/\s*[;:.]\s+|\.$/).forEach(cl=>{const C=[...stems(cl)].filter(x=>!X.has(x));if(C.length<3||B.size<3)return;const inter=C.filter(x=>B.has(x)).length;
+   const r=Math.min(inter/C.length,inter/B.size);if(r>worst)worst=r});
+  if(/\bBut\s*:/.test(c)||norm(c).includes(norm(but).slice(0,60))||worst>0.5)out.push(`situation ${i+1} (${Math.round(worst*100)} %)`)});return out}
+/* Conditions concrètes de la tâche dans l’objectif (distance G/F, durée, rapport de force, espace) */
+function afinDe(pt){pt=String(pt||"").trim().replace(/^pour\s+/,"");if(!pt)return"";return (/^[aeiouyhéèêàâîôûœ]/i.test(pt)?"afin d’":"afin de ")+pt}
+const AT_COND={
+ "Course de vitesse":{technique:"sur 20 m (G) / 15 m (F)",rythme:"sur 30 m (G) / 25 m (F)",effort:"sur {dG} (G) / {dF} (F)",perf:"sur {dG} (G) / {dF} (F)",defi:"sur {dG} (G) / {dF} (F) en duel",collectif:"par équipes de 4 sur 40 m"},
+ "Course de haies":{technique:"sur 3 haies basses espacées de 7 m",rythme:"sur 4 haies basses en 3 appuis entre les haies",effort:"sur 5 haies basses",perf:"sur {dist}",defi:"sur {dist} en duel",collectif:"en relais-haies par équipes de 4"},
+ "Relais":{technique:"par 2 dans une zone de transmission de 20 m",rythme:"à partir d’une marque de départ placée à 6 pas",effort:"en relais {dist}",perf:"en relais {dist}",defi:"en relais {dist} contre une autre équipe",collectif:"en relais {dist} par équipes de 4"},
+ "Saut en longueur":{technique:"avec un élan réduit de 6 foulées",rythme:"avec un élan étalonné de 8 à 10 foulées",effort:"avec son élan complet",perf:"avec son élan complet et une zone d’appel de 1 m",defi:"en essais mesurés",collectif:"par équipes de 4 (cumul des sauts)"},
+ "Saut en hauteur":{technique:"avec un élan de 3 appuis",rythme:"avec un élan en courbe de 5 appuis",effort:"avec un élan en courbe de 7 appuis",perf:"à des hauteurs qui montent de 5 cm",defi:"à une hauteur annoncée à l’avance",collectif:"par équipes de 4 (cumul des hauteurs)"},
+ "Lancer de poids":{technique:"de face, sans élan, avec un poids de 4 kg (G) / 3 kg (F)",rythme:"de profil avec un poids de 4 kg (G) / 3 kg (F)",effort:"avec un poids de 4 kg (G) / 3 kg (F)",perf:"avec un poids de 4 kg (G) / 3 kg (F) dans le secteur",defi:"avec un poids de 4 kg (G) / 3 kg (F) en essais mesurés",collectif:"par équipes de 4 (cumul des lancers)"}};
+function taskCond(f,bank,s,tag,ctx,v,c){if(/\d+\s*(?:m\b|min|×|contre)/.test(c)&&bank.fam!==GY)return"";
+ if(bank.fam===SC||bank.fam===RV){const tp=(pickSits(bank,tag,v,s.contenu)||[])[0]||{},rk=tp.r?["","R1","R2","R3"][tp.r]:"",rv=String(rk?ctx[rk]||"":"").replace(/ sur terrain réduit/,"");
+  if(bank.fam===RV)return rv?(/^par 2\b/.test(rv)?rv.replace(/^par 2\b/,"en binômes"):/^par \d/.test(rv)?rv.replace(/^par (\d)/,"par groupes de $1"):`en ${rv}`)+(/contre/.test(rv)?" sur terrain réduit":" de part et d’autre du filet"):"";
+  const sp={conservation:"sur un demi-terrain",demarquage:"sur un demi-terrain",progression:"contre une défense étagée",tir:bank.bg==="basket"?"face au panier":"face au gardien de but",defense:"face à une attaque organisée",montee:"sur tout le terrain",collectif:"sur terrain réduit"}[tag]||"";
+  return [rv?`en ${rv}`:"",/défense|attaque organisée/.test(c)&&/défense|attaque/.test(sp)?"":sp].filter(Boolean).join(" ")}
+ if(bank.fam===AT){const T=AT_COND[f.aps];if(!T)return"";const x=fill(T[tag]||T.technique,ctx);return /\{/.test(x)?"":x}
+ if(bank.fam===GY){const m=(s.m||{}).m;if(m==="elts")return /atelier/.test(c)?(/parade/.test(c)?"":"avec la parade d’un camarade"):/parade/.test(c)?"en 3 ateliers tournants":"en 3 ateliers tournants avec la parade d’un camarade";if(m==="liai")return gyIsAgres(bank)?"à chaque agrès":"sur une longueur de praticable";if(m==="proj"||m==="ench")return /devant|observateur|binôme|jury/.test(c)?"":"devant son binôme observateur";return""}
+ return""}
+function ptRedundant(c,pt){const P=[...stems(pt)];if(!P.length)return false;const C=stems(c);return P.filter(x=>C.has(x)).length/P.length>=0.5}
+function ptAlt(fam,tag,c,verb){const d=/d[ée]fen|r[ée]cup|couvr/i.test(tag+" "+(verb||""));return fam===SC?(d?"pour empêcher l’équipe adverse de marquer":/marqu|tir/i.test((verb||"")+" "+tag)?"pour faire gagner son équipe":"pour se créer une occasion de marquer"):fam===RV?(d?"pour empêcher la balle de tomber dans son camp":"pour gagner l’échange"):fam===GY?"pour réaliser un enchaînement correct":"pour améliorer sa performance"}
+function cdup(c){return c.replace(/\b(en|du) relais en relais\b/g,"$1 relais").replace(/ devant son binôme observateur(?=.* devant )/,"")}
+function withCond(c,cond,pt,fam,tag,verb){c=cdup(c);const vc=(verb||"")+" ";if(pt&&fam&&ptRedundant(vc+c,pt))pt=ptAlt(fam,tag,c,verb);
+ {const m=c.match(/\s(pour|afin d[e’])\s?(.*)$/);if(m&&fam&&ptRedundant(vc+c.slice(0,m.index),m[2]))c=c.slice(0,m.index)+" "+afinDe(ptAlt(fam,tag,c,verb))}
+if(cond){const m=c.match(/\s(pour|afin d[e’])\s?/);c=m?c.slice(0,m.index)+" "+cond+c.slice(m.index):c+" "+cond}
+ if(pt&&!/\bpour\b|\bafin\b/.test(c))c+=" "+afinDe(pt);return cdup(c)}
+/* ===== Course d’endurance : plan propre (test de 6 min, allures en % de VMA) ===== */
+function endurPlan(niv){const C=CYCLE[niv]&&CYCLE[niv][AT];if(!C)return null;const col=["1AC","2AC","3AC"].includes(niv),pro=niv==="2BAC";
+ const PJ=s=>pro&&!/projet/.test(s)?s.replace(/ afin d/," dans le cadre de son projet de performance afin d"):s;
+ const vma=col?"70 %":niv==="TC"?"75 %":"80 %",fr=col?"3 × 3 min":"3 × 4 min",dist=col?"8 min":niv==="TC"||niv==="1BAC"?"10 min":"12 min";
+ return{seq:C.seq,it:[
+  ["Courir","en aisance respiratoire pendant 2 × 5 min en parlant avec son binôme afin d’adapter son effort en organisant sa respiration et sa foulée","séries courues sans arrêt",null,"en courant les 2 séries sans s’arrêter"],
+  ["Régler","son allure sur le sifflet (un plot de 25 m toutes les 9 s) pendant 4 min afin de construire de nouveaux repères d’allure pour adapter son effort","plots passés au signal",null,"avec un écart d’au plus 2 plots par rapport au sifflet"],
+  ["Courir",`${fr} à ${vma} de sa VMA avec 1 min de marche afin d’adapter son effort à ses ressources`,"fractions à l’allure prévue",null,"en courant au moins 2 fractions sur 3 à l’allure prévue (± 1 plot)"],
+  [pro?"Construire":"Respecter",pro?"son projet de course (allure, temps de passage) à partir de sa VMA afin de planifier son effort":"un contrat de distance annoncé en 4 min afin d’adapter son effort à ses ressources","contrats respectés",null,pro?"en respectant au moins 3 temps de passage prévus sur 4":"en respectant son contrat à 1 plot près"],
+  ["Maintenir",`une allure régulière (${vma} de sa VMA) sur ${fr} afin de gérer son effort jusqu’à la fin de la course`,"fractions régulières",null,"avec un écart d’au plus 1 plot (25 m) entre les fractions"],
+  ["Gérer","son effort pendant 8 min en respectant un temps de passage toutes les 2 min afin de finir à allure constante","temps de passage respectés",null,"en respectant au moins 3 temps de passage sur 4"],
+  ["Courir","en relais d’équipe de 3 (2 min chacun) afin de réaliser la meilleure performance collective (cumul de distance)","relais à l’allure prévue",null,"en courant son relais sans s’arrêter à l’allure prévue"],
+  ["Courir",`pendant ${dist} à allure régulière afin d’améliorer sa performance (distance parcourue) depuis le test de 6 min`,"tours réguliers",null,"en parcourant au moins la distance de son test de départ"]].map(x=>{x[1]=PJ(x[1]);return x})}}
+const CYCLE_APS={"Course d'endurance":endurPlan};
+/* Test de 6 min (demi-Cooper) */
+(function(){const E=BANK["Course d'endurance"];if(!E)return;
+ E.sits.unshift({tags:["test"],t:"Test de 6 min (demi-Cooper)",c:"Plots tous les 25 m autour de la piste ; par binômes, l’un court, l’autre compte les plots : courir 6 min le plus loin possible sans s’arrêter (marche tolérée) ; VMA (km/h) ≈ distance (m) ÷ 100.",r:"Partir à une allure tenable ; ne pas s’arrêter ; accélérer la dernière minute.",s:"Marche tolérée 30 s.",x:"Sans marche.",sk:"endurance",q:"Chaque élève connaît sa distance et sa VMA estimée.",o:"Binômes coureur / compteur, puis on inverse les rôles."});
+ E.sits.forEach(s=>{if(!s.q)s.q=/fraction/i.test(s.t)?"Écart d’au plus 1 plot (25 m) entre deux fractions.":/contrat/i.test(s.t)?"Contrat respecté à 1 plot près.":"Courir toute la durée sans s’arrêter."});
+ E.test="Test de 6 min (demi-Cooper) puis course de {dist} : relevé de la distance parcourue, de la VMA estimée et de la régularité de l’allure."})();
+/* Situations complémentaires : au moins 2 situations par intention (effort, perf, collectif, défi, rythme) */
+(function(){const A=(aps,list)=>{const B=BANK[aps];if(!B)return;const glob=B.sits.findIndex(x=>x.g),sk0=(B.sits.find(x=>x.g)||B.sits[0]).sk;
+ list.forEach(o=>{o.sk=o.sk||sk0;B.sits.splice(glob<0?B.sits.length:B.sits.indexOf(B.sits.find(x=>x.g)),0,o)})};
+ A("Course de vitesse",[
+  {tags:["perf","defi"],t:"Course à handicap",c:"Par séries de 4 sur {dist} : départs décalés selon les temps du test (1 m par dixième de seconde) ; chacun cherche à améliorer sa performance en respectant ses repères de départ ; 2 courses.",r:"Départ réactif ; regard vers la ligne d’arrivée ; ne pas se retourner.",s:"Écarts de handicap plus grands.",x:"Départ accroupi, sans handicap."},
+  {tags:["effort","collectif"],t:"Navettes par équipes",c:"Équipes de 4 sur 2 × 20 m : chaque coureur réalise son aller-retour à vitesse maximale puis touche la main du suivant ; on cumule les temps de l’équipe ; récupération complète entre deux passages.",r:"Effort maximal sur toute la navette ; freiner tard ; relancer fort après le demi-tour.",s:"Navette de 2 × 15 m.",x:"Navette de 2 × 25 m."}]);
+ A("Course de haies",[
+  {tags:["effort","perf"],t:"Haies chronométrées en série",c:"Couloirs de 4 haies basses : course chronométrée en maintenant son effort jusqu’à la dernière haie ; 3 passages avec retour en marchant ; chacun compare sa performance au passage précédent.",r:"Attaquer chaque haie sans ralentir ; garder 3 appuis entre les haies ; finir au-delà de la ligne.",s:"3 haies, intervalles réduits.",x:"5 haies, hauteur augmentée."},
+  {tags:["collectif","defi"],t:"Défi haies par équipes",c:"Équipes de 4 : chaque coureur réalise un 40 m haies chronométré ; les temps sont additionnés pour la performance collective ; rôles de starter, chronométreur et juge des haies.",r:"Départ au signal ; franchissement rasant ; rester dans son couloir.",s:"Haies plus basses.",x:"Intervalles imposés plus longs."}]);
+ A("Relais",[
+  {tags:["rythme","effort"],t:"Relais navette en rythme",c:"Par 4 sur 4 × 30 m : transmission du témoin dans une zone de 10 m en gardant un rythme de course régulier ; effort maximal sur sa portion ; 3 passages.",r:"Partir au passage de la marque ; tendre le bras au signal ; ne pas ralentir dans la zone.",s:"Zone de transmission de 15 m.",x:"Portions de 40 m."},
+  {tags:["perf","collectif","defi"],t:"Relais à handicap",c:"Équipes de 4 : relais 4 × 40 m avec départs décalés selon les temps précédents ; chaque équipe cherche à améliorer sa performance collective en respectant ses marques de départ.",r:"Transmission dans la zone ; receveur lancé à pleine vitesse ; donneur qui accélère jusqu’à la transmission.",s:"Handicap plus grand.",x:"Sans handicap, 4 × 50 m."}]);
+ A("Saut en longueur",[
+  {tags:["effort"],t:"Sauts répétés sur élan réduit",c:"Élan de 8 appuis : 4 sauts en gardant la même intensité d’effort à chaque impulsion ; retour en marchant pour récupérer ; le binôme mesure chaque saut.",r:"Accélérer sur les derniers appuis ; impulsion vers le haut ; réception pieds joints.",s:"Élan de 6 appuis.",x:"Élan de 10 appuis."}]);
+ A("Saut en hauteur",[
+  {tags:["effort","perf"],t:"Montée de barre en contrat",c:"Chaque élève choisit une hauteur de départ selon ses repères puis tente 3 hauteurs croissantes (2 essais par hauteur) ; il gère son effort et note sa meilleure performance.",r:"Élan courbe régulier ; impulsion pied éloigné de la barre ; montée du genou libre.",s:"Élastique à la place de la barre.",x:"Hauteur de départ plus élevée."},
+  {tags:["collectif","defi"],t:"Défi hauteur par équipes",c:"Équipes de 4 : on additionne la meilleure hauteur franchie par chaque sauteur (2 essais par hauteur) pour la performance collective ; rôles de juge et de remonteur de barre.",r:"Respecter son élan ; franchir sans toucher la barre ; aider à remonter la barre.",s:"Élastique, hauteur basse.",x:"Barre, montée de 5 cm."}]);
+ A("Lancer de poids",[
+  {tags:["effort","perf"],t:"Lancers en contrat de distance",c:"Zones de 50 cm tracées au sol : chaque élève annonce sa zone puis réalise 3 lancers en gérant son effort ; il note sa meilleure performance et ses repères d’élan.",r:"Poids au cou ; poussée de bas en haut ; coude haut derrière le poids.",s:"Poids plus léger.",x:"Lancer avec élan en pas chassé."},
+  {tags:["collectif","defi"],t:"Défi lancers par équipes",c:"Équipes de 4 : on additionne la meilleure performance de chaque lanceur (2 lancers) ; rôles de juge de chute, mesureur et secrétaire.",r:"Lancer depuis le cercle ; ne pas sortir par l’avant ; attendre le signal du juge.",s:"Zones de mesure larges.",x:"Lancer avec élan."}]);
+ A("Course d'endurance",[
+  {tags:["effort","collectif"],q:"Courir les 2 séries sans s’arrêter à l’allure annoncée.",t:"Course en binômes à allure imposée",c:"Par 2 sur la piste balisée tous les 25 m : courir côte à côte pendant 4 min à l’allure annoncée, en adaptant son effort à ses sensations (parler sans s’essouffler) ; 2 séries, 1 min de marche.",r:"Respiration régulière ; foulée souple ; garder la même allure que son binôme.",s:"Séries de 3 min.",x:"Séries de 5 min."}]);
+})();
 /* ===================== GÉNÉRATEUR AUTOMATIQUE DE FICHE ===================== */
 const AUTO_APS=Object.keys(BANK);
 const FAMT_POUR={[SC]:SC_POUR,[RV]:RV_POUR};
-const AT_GAIN={course:["réduire son temps de course","en réduisant son temps de course"],saut:["élargir l’espace franchi","en élargissant l’espace franchi"],lancer:["augmenter la distance de son lancer","en augmentant la distance de son lancer"]};
-function atKind(aps){return /Saut/.test(aps)?"saut":/Lancer/.test(aps)?"lancer":"course"}
+const AT_GAIN={course:["réduire son temps de course","en réduisant son temps de course"],saut:["élargir l’espace franchi","en élargissant l’espace franchi"],lancer:["augmenter la distance de son lancer","en augmentant la distance de son lancer"],endur:["augmenter la distance parcourue en un temps donné","en augmentant la distance parcourue"]};
+const AT_CONCRETE={
+ course:[[/la technique de base de l’épreuve de façon globale et correcte/,"une course rapide en ligne droite, buste droit et bras actifs"],[/son corps \(posture, appuis, bras\) pour une réalisation globale et correcte/,"sa course (buste droit, appuis sur l’avant du pied, bras fléchis à 90°)"],[/les mouvements de son corps \(bras et jambes\) pendant l’épreuve/,"ses bras et ses jambes (genoux hauts, bras actifs) pendant la course"],[/l’élan et l’action principale/,"le départ et la mise en action"]],
+ saut:[[/la technique de base de l’épreuve de façon globale et correcte/,"un saut complet (course d’élan, impulsion d’un pied, réception deux pieds)"],[/son corps \(posture, appuis, bras\) pour une réalisation globale et correcte/,"son saut (course d’élan régulière, impulsion active, réception équilibrée)"],[/les mouvements de son corps \(bras et jambes\) pendant l’épreuve/,"ses bras et ses jambes pendant l’impulsion et la suspension"],[/l’élan et l’action principale/,"la course d’élan et l’impulsion"]],
+ lancer:[[/la technique de base de l’épreuve de façon globale et correcte/,"un lancer complet (poussée du bras à partir de l’épaule, coude haut)"],[/son corps \(posture, appuis, bras\) pour une réalisation globale et correcte/,"son lancer (appuis écartés, poids au cou, poussée de bas en haut)"],[/les mouvements de son corps \(bras et jambes\) pendant l’épreuve/,"ses jambes, son tronc et son bras lanceur pendant la poussée"],[/l’élan et l’action principale/,"le placement et la poussée"]]};
+function atKind(aps){return /Saut/.test(aps)?"saut":/Lancer/.test(aps)?"lancer":/endurance/i.test(aps)?"endur":"course"}
 const VTAG={[SC]:{"conserver":"conservation","fixer":"tir","se replier":"montee","se démarquer":"demarquage","se déplacer":"demarquage","progresser":"progression","accélérer":"progression","marquer":"tir","défendre":"defense","récupérer":"defense","changer":"montee","contre-attaquer":"montee","occuper":"collectif","construire":"collectif","maîtriser":"collectif","analyser":"collectif","gérer":"collectif"},
  [RV]:{"servir":"service","défendre":"defense","récupérer":"defense","réceptionner":"reception","passer":"passe","faire progresser":"passe","renvoyer":"renvoi","orienter":"renvoi","marquer":"renvoi","se déplacer":"deplacement","se placer":"deplacement","identifier":"deplacement"}};
 function tagOf(fam,txt){const t=txt.toLowerCase();const vt=VTAG[fam];if(vt){const k=Object.keys(vt).sort((a,b)=>b.length-a.length).find(v=>t.startsWith(v+" "));
@@ -1887,10 +1999,11 @@ function adaptContenu(c,bank,f){let s=c;
  if(bank.fam===RV)s=s.replace(/sa cible/g,"son terrain");
  if(bank.fam===AT){const g=AT_GAIN[atKind(f.aps)];s=s.replace(/aux repères posés sur la piste/,"aux repères posés au sol");if(bank.rep)s=s.replace(/\(marques d’élan, couloirs, haies\)/,bank.rep);
   s=s.replace(/réduire le temps de course ou élargir l’espace franchi/,g[0]).replace(/en réduisant son temps ou en élargissant l’espace/,g[1]).replace(/pour réduire le temps/,"pour "+g[0]);
-  s=s.replace(/\(élan, action, réception ou arrivée\)/,{course:"(départ, mise en action, course lancée, arrivée)",saut:"(élan, impulsion, suspension, réception)",lancer:"(élan, placement, lancer, rééquilibration)"}[atKind(f.aps)]);
+  {const K=atKind(f.aps),C=AT_CONCRETE[K==="endur"?"course":K];if(C)C.forEach(([re,t])=>{s=s.replace(re,t)})}
+  s=s.replace(/\(élan, action, réception ou arrivée\)/,{course:"(départ, mise en action, course lancée, arrivée)",saut:"(élan, impulsion, suspension, réception)",lancer:"(élan, placement, lancer, rééquilibration)",endur:"(départ, allure de croisière, relance, arrivée)"}[atKind(f.aps)]);
   s=s.replace(/de l’épreuve/g,"de "+bank.label.replace(/^le /,"du ").replace(/^du /,"du ").replace(/^de la /,"la ")).replace(/l’épreuve/g,bank.label);
   s=s.replace(/de du /g,"du ").replace(/de la la /g,"de la ");
-  if(!s.includes(bank.label)&&!s.includes(bank.label.replace(/^le /,"du ")))s=/ pour /.test(s)?s.replace(/ pour /," "+bank.en+" pour "):s+" "+bank.en}
+  if(!s.includes(bank.label)&&!s.includes(bank.label.replace(/^le /,"du ")))s=/ (pour|afin d)/.test(s)?s.replace(/ (pour|afin d)/," "+bank.en+" $1"):s+" "+bank.en}
  if(bank.fam===GY&&!s.includes(bank.en))s=s.replace(/gymniques?(?: [A-E](?:(?:, | et )[A-E])*(?![\wÀ-ÿ]))?/,m=>m+" "+bank.en);
  return artFix(s)}
 function femAdj(w){return w.replace(/és$/,"ées").replace(/is$/,"ies").replace(/cts$/,"ctes").replace(/iers$/,"ières").replace(/(ts|ds)$/,m=>m[0]+"es")}
@@ -1899,28 +2012,36 @@ function adaptUnit(u,bank){if(bank.fam!==AT||!/^essais\b/.test(u))return u;let r
 function critPhrase(unit,a,b){const m=unit.match(/^(.*?)\s+réussi(e)?s$/);if(m)return `en réussissant au moins ${a} ${m[1]} sur ${b}`;
  const sp=unit.match(/^(.*?)\s+((?:au-dessus|proches|conformes|au niveau|tenus \\d|tenues \\d|jusqu|en \d|dans la|vers|amenées|dans la zone).*)$/);if(sp)return `avec au moins ${a} ${sp[1]} sur ${b} ${sp[2]}`;return `avec au moins ${a} ${unit} sur ${b}`}
 /* Objectif (verbe + contenu + intérêt + critère) pour une ligne du plan */
-function objParts(f,s,bank){const ctx=ctxOf(f,bank,f.variant);
- if(s.type!=="app"){const ref=refShort(f,bank,ctx);
-  const apsN=bank.label.replace(/^(le|la|l’) ?/,"");return{verbe:s.verbe,contenu:s.type==="diag"?`le projet du cycle à partir du niveau de pratique des élèves en ${apsN} observé par la situation de référence (${ref})`:`le niveau atteint des élèves en ${apsN} par la situation de référence (${ref}) pour mesurer les progrès réalisés au regard de l’OTC`,
-   critere:s.type==="diag"?"en relevant les résultats de tous les élèves sur une fiche d’observation":"en évaluant tous les élèves selon la grille d’évaluation du cycle",tag:"eval",unit:""}}
- const tag=tagOf(bank.fam,s.verbe+" "+s.contenu);let c=adaptContenu(s.contenu,bank,f);
- const pt=(bank.pour&&bank.pour[tag])||(FAMT_POUR[bank.fam]||{})[tag]||"";
- if(pt&&!/\bpour\b|\bafin\b/.test(c))c+=" "+fill(pt,ctx);
+function objParts(f,s,bank,vIn){const v=vIn!=null?vIn:(f.variant||0),ctx=ctxOf(f,bank,v),fam=bank.fam,apsN=bank.label.replace(/^(le|la|l’) ?/,"");
+ if(s.type!=="app"){const ref=refShort(f,bank,ctx),endu=/endurance/i.test(f.aps),diag=s.type==="diag";
+  const P=(verbe,contenu,critere)=>({verbe,contenu,critere,tag:"eval",unit:""});
+  if(endu)return diag?P("Courir","pendant 6 min le plus loin possible sans s’arrêter, marche tolérée (test de demi-Cooper), afin d’estimer sa VMA et de situer son niveau de départ","en relevant avec son binôme la distance parcourue (VMA ≈ distance ÷ 100)")
+   :P("Courir",`pendant ${ctx.dist||"10 min"} à allure régulière (situation de référence) afin de mesurer ses progrès depuis le test de 6 min`,"en obtenant sa note selon la grille d’évaluation du cycle");
+  if(fam===SC||fam===RV){const r=ref.replace(/^match /,"un match ");return diag?P("Jouer",`${r} afin de situer son niveau de départ et de prévoir ses axes de progrès`,"en relevant avec son binôme ses actions réussies sur la fiche d’observation")
+   :P("Jouer",`${r} afin de mesurer ses progrès au regard de l’OTC`,"en obtenant sa note selon la grille d’évaluation du cycle")}
+  if(fam===GY)return diag?P("Présenter",`les éléments de chaque difficulté (${ctx.compo}) en ateliers afin de situer son niveau de départ et de prévoir son enchaînement`,"en relevant avec son binôme les éléments réussis sur la fiche d’observation")
+   :P("Présenter",`son enchaînement ${bank.en} (${ctx.compo}) devant un jury d’élèves afin de mesurer ses progrès au regard de l’OTC`,"en obtenant sa note (difficulté /8 + exécution /12) selon la grille du cycle");
+  return diag?P("Réaliser",`la situation de référence (${ref}) afin de situer sa performance de départ et de prévoir son projet de progrès`,"en relevant sa meilleure performance sur 2 essais")
+   :P("Réaliser",`la situation de référence (${ref}) afin de mesurer ses progrès depuis le test de départ`,"en obtenant sa note selon la grille d’évaluation du cycle")}
+ const tag=tagOf(fam,s.verbe+" "+s.contenu);let c=adaptContenu(s.contenu,bank,f);
+ const pt=fill((bank.pour&&bank.pour[tag])||(FAMT_POUR[fam]||{})[tag]||"",ctx);
+ c=withCond(c,typeof taskCond==="function"?taskCond(f,bank,s,tag,ctx,v,c):"",pt,fam,tag,s.verbe);
  const [a,b]=PROFIL[f.niveau].ratio.split("/");const unit=adaptUnit(s.unite,bank);
- return{verbe:s.verbe,contenu:c,critere:critPhrase(unit,a,b),tag,unit,a,b}}
+ const crt=String(s.crit||critPhrase(unit,a,b)).replace(/\b(courses|réceptions|passes|attaques|actions|frappes|transmissions|séries|fractions|figures|prestations|performances|réalisations|corrections|mesures|épreuves)((?: \S+ment)?) (correct|réussi|validé)s\b/g,"$1$2 $3es");
+ return{verbe:s.verbe,contenu:c,critere:crt,fixed:!!s.crit,tag,unit,a,b}}
 function rot(arr,v){if(!arr.length)return arr;const k=((v%arr.length)+arr.length)%arr.length;return arr.slice(k).concat(arr.slice(0,k))}
 function byKw(arr,kw){if(!kw)return arr;const K=stems(kw);return arr.map((x,i)=>({x,i,sc:[...stems(x.t+" "+x.c)].filter(k=>K.has(k)).length})).sort((a,b)=>b.sc-a.sc||a.i-b.i).map(o=>o.x)}
 function pickSits(bank,tag,v,kw){
  if(bank.fam===SC||bank.fam===RV){const T=(bank.fam===SC?SC_T:RV_T)[tag];const p1=byKw(T.filter(x=>x.p===1),kw),p2=byKw(T.filter(x=>x.p===2),kw),p3=T.filter(x=>x.p===3);
   return[p1[v%p1.length],p2[Math.floor(v/p1.length)%p2.length]||p2[0],p3[0]].filter(Boolean)}
- const S=bank.sits,glob=S.find(x=>x.g),match=byKw(S.filter(x=>!x.g&&x.tags.includes(tag)),kw),other=S.filter(x=>!x.g&&!x.tags.includes(tag));
- const ord=rot(match,v).concat(rot(other,v));return[ord[0],ord[1],glob].filter(Boolean)}
+ const S=bank.sits,glob=S.find(x=>x.g),match=S.filter(x=>!x.g&&x.tags.includes(tag)),other=S.filter(x=>!x.g&&!x.tags.includes(tag));
+ const ord=byKw(rot(match,v),kw).concat(byKw(rot(other,v),kw));return[ord[0],ord[1],glob].filter(Boolean)}
 function mkSit(tpl,bank,ctx,tag,i,n){const sc=bank.fam===SC||bank.fam===RV;
  const rk=sc&&tpl.r?["","R1","R2","R3"][tpl.r]:"",rv=rk?ctx[rk]:"";
  let crit=sc?(bank.cues[tag]||""):bank.fam===GY?(bank.cues[i?tpl.tags[0]:tag]||bank.cues[tag]||""):(tpl.r||"");
- if(sc&&i>0)crit=i===n-1?"Réinvestir en match les critères de réalisation de la séance.":"Mêmes critères que la situation 1, en jouant plus vite face à l’opposition.";
+ if(sc&&i>0)crit=i===n-1?"Réinvestir en match les critères de réalisation de la séance.":"Mêmes critères que la situation 1, en jouant plus vite face à l’opposition"+((bank.cues[tag]||"")?" : "+lcfirst(String(fill(bank.cues[tag],ctx)).split(/ ;|\./)[0])+".":".");
  const ttl=fill(tpl.t,ctx)+(rv&&/\{R/.test(tpl.c)?` (${rv.replace(/ sur terrain réduit/,"")})`:"");
- return{titre:ttl,conditions:fill(tpl.c,ctx),criteres:fill(crit,ctx),simplifier:fill(tpl.s,ctx),complexifier:fill(tpl.x,ctx),_sk:{k:tpl.sk,r:rv},_q:fill(tpl.q||((window.SIT_Q||{})[bank.fam]||{})[bank.fam===GY||bank.fam===AT?(tpl.tags||[tag])[0]:tag]||"",ctx),_o:fill(tpl.o||"",ctx),_sec:fill(tpl.sec||"",ctx)}}
+ return{_ref:!!(tpl.g||tpl.p===3),titre:ttl,conditions:fill(tpl.c,ctx),criteres:fill(crit,ctx),simplifier:fill(tpl.s,ctx),complexifier:fill(tpl.x,ctx),_sk:{k:tpl.sk,r:rv},_q:fill(tpl.q||((window.SIT_Q||{})[bank.fam]||{})[bank.fam===GY||bank.fam===AT?(tpl.tags||[tag])[0]:tag]||"",ctx),_o:fill(tpl.o||"",ctx),_sec:fill(tpl.sec||"",ctx)}}
 function refShort(f,bank,ctx){if(bank.fam===AT){const g=bank.sits.find(x=>x.g);return lcfirst(fill(g.c,ctx).split(/ ;|\./)[0])}
  if(bank.fam===GY)return `présentation d’un enchaînement ${bank.en} ${ctx.compo} devant le groupe classe`;return lcfirst(refFor(f,bank,ctx).replace(/\.$/,""))}
 function ensureComps(f,fam,type){const op=OP[f.niveau];if(!op)return[];
@@ -1931,13 +2052,13 @@ function ensureComps(f,fam,type){const op=OP[f.niveau];if(!op)return[];
   if(!n&&f.competences[0])f.competences[0].on=true}
  const cats=[];f.competences.filter(c=>c.on).forEach(c=>compCats(c.t).forEach(x=>{if(!cats.includes(x))cats.push(x)}));return cats}
 const STRETCH={[SC]:"épaules, ischio-jambiers, quadriceps et mollets",[RV]:"épaules, poignets, quadriceps et mollets",[AT]:"ischio-jambiers, quadriceps, mollets et adducteurs",[GY]:"épaules, poignets, dos et ischio-jambiers"};
-function nextAnnonce(f,bank,n,len){if(n>=len)return"Annonce de l’objectif du prochain cycle.";const s2=planFor(f.niveau,bank.fam,n+1,len);if(!s2)return"Annonce de l’objectif de la prochaine séance.";
+function nextAnnonce(f,bank,n,len){if(n>=len)return"Annonce de l’objectif du prochain cycle.";const s2=planFor(f.niveau,bank.fam,n+1,len,f.aps);if(!s2)return"Annonce de l’objectif de la prochaine séance.";
  if(s2.type!=="app")return"Annonce de la prochaine séance : évaluation sommative par la situation de référence.";
  return `Annonce de l’objectif de la prochaine séance : ${lcfirst(s2.verbe)} ${adaptContenu(s2.contenu,bank,f).split(/ pour | afin /)[0]}.`}
 function genFiche(f,opt){opt=opt||{};const bank=BANK[f.aps];if(!bank||!OP[f.niveau])return false;const niv=f.niveau,fam=bank.fam,P=PROFIL[niv];
  f.famille=fam;f.oti=OP[niv].oti;f.otc=OP[niv].otc[fam]||f.otc;if(opt.variant!=null)f.variant=opt.variant;const v=f.variant||0;
- const len=parseInt(f.cycleLen)||10,n=parseInt(opt.n||f.seance)||1;const s=planFor(niv,fam,n,len);if(!s)return false;
- const ctx=ctxOf(f,bank,v+(s.consol?1:0)),o=objParts(f,s,bank),cats=ensureComps(f,fam,s.type);
+ const len=parseInt(f.cycleLen)||10,n=parseInt(opt.n||f.seance)||1;const s=planFor(niv,fam,n,len,f.aps);if(!s)return false;
+ const ctx=ctxOf(f,bank,v+(s.consol?1:0)),o=objParts(f,s,bank,v+(s.consol?1:0)),cats=ensureComps(f,fam,s.type);
  f.seance=String(n);f.objSeq=s.seq;f.objMode="builder";f.objVerbe=o.verbe;f.objContenu=o.contenu;f.objCritere=o.critere;f.objLibre="";f.materiel=bank.mat;
  const ini=f.phases.ini,fd=f.phases.fond,fin=f.phases.fin,T=FAMT[fam],ref=refFor(f,bank,ctx);
  ini.but="Savoir s’échauffer et échauffer l’autre.";
@@ -1946,21 +2067,24 @@ function genFiche(f,opt){opt=opt||{};const bank=BANK[f.aps];if(!bank||!OP[f.nive
  fin.but="Retour au calme et bilan de la séance.";fin.contenu=`Marche, respiration ; étirements : ${STRETCH[fam]}.\nBilan : questions / réponses sur les critères de réussite.\n${nextAnnonce(f,bank,n,len)}`;
  fin.consignes="Éviter les temps de ressort lors des étirements ; écouter les camarades pendant le bilan.";fin.criteres="Retour au calme effectif.\nQuestions / réponses, feed-back des élèves.";
  let sits;
- if(s.type==="app"){const tpls=pickSits(bank,o.tag,v+(s.consol?1:0),s.contenu);sits=tpls.map((t,i)=>mkSit(t,bank,ctx,o.tag,i,tpls.length));
-  fd.but=ucfirst(`${o.verbe} ${o.contenu}`)+".";const sb=ucfirst(`${lcfirst(o.verbe)} ${o.contenu.split(/ pour | afin /)[0]}`);sits.forEach((x,i)=>{if(!i||!shared(x.titre+" "+x.conditions+" "+x.criteres,`${o.verbe} ${o.contenu}`).length)x.conditions=`But : ${lcfirst(sb)}. `+x.conditions});}
+ if(s.type==="app"){const tpls=pickSits(bank,o.tag,v+(s.consol?1:0),s.verbe+" "+s.contenu);sits=tpls.map((t,i)=>mkSit(t,bank,ctx,o.tag,i,tpls.length));
+  fd.but=ucfirst(`${o.verbe} ${o.contenu}`)+".";}
  else{const first=fam===AT||fam===GY?mkSit(bank.sits[0],bank,ctx,tagOf(fam,bank.sits[0].tags[0]),0,2):mkSit(pickSits(bank,fam===SC?"conservation":"reception",v)[0],bank,ctx,fam===SC?"conservation":"reception",0,2);
-  first.titre="Atelier d’observation : "+first.titre;first.conditions=(s.type==="diag"?`But : prévoir le projet du cycle à partir du niveau de pratique de chaque élève en ${bank.label.replace(/^(le|la|l’) ?/,"")}. `:`But : évaluer le niveau atteint de chaque élève en ${bank.label.replace(/^(le|la|l’) ?/,"")}. `)+first.conditions;first.criteres="Les observateurs notent les réussites sur la fiche d’observation. "+first.criteres;
+  first.titre="Atelier d’observation : "+first.titre;first.criteres="Les observateurs notent les réussites sur la fiche d’observation. "+first.criteres;
   const g=fam===SC||fam===RV?"match":(bank.sits.find(x=>x.g)||{}).sk;
   sits=[first,{titre:"Situation de référence",conditions:`${ref} Le groupe classe est divisé en trois groupes (exécutants, observateurs, organisateurs / arbitres) qui tournent. `+(fam===AT?"L’un derrière l’autre, les élèves réalisent un essai libre puis leurs essais mesurés ; rotation des groupes quand le groupe exécutant a terminé.":fam===GY?"Chaque élève présente son enchaînement ; son binôme l’observe avec une fiche individuelle, puis on inverse les rôles.":"Binômes A.A’ – B.B’ : l’un joue, l’autre l’observe avec une fiche individuelle, puis on inverse les rôles."),criteres:s.type==="diag"?"Les observateurs remplissent la fiche d’observation individuelle selon les critères de l’OTC.":"Les élèves sont évalués avec la grille d’évaluation du cycle (OTC).",simplifier:"",complexifier:"",_sk:{k:g,r:fam===SC||fam===RV?(ref.match(/\d+ contre \d+/)||[""])[0]:""}}];
-  fd.but=s.type==="diag"?`Prévoir le projet du cycle à partir du niveau de pratique des élèves en ${bank.label.replace(/^(le|la|l’) ?/,"")} observé par la situation de référence.`:`Évaluer le niveau atteint par les élèves en ${bank.label.replace(/^(le|la|l’) ?/,"")} par la situation de référence.`}
+  fd.but=s.type==="diag"?`Situer son niveau de départ en ${bank.label.replace(/^(le|la|l’) ?/,"")} par la situation de référence.`:`Mesurer ses progrès en ${bank.label.replace(/^(le|la|l’) ?/,"")} par la situation de référence.`}
  const sks=sits.map(x=>x._sk),xq=sits.map(x=>x._q||""),xo=sits.map(x=>x._o||""),xs=sits.map(x=>x._sec||"");sits.forEach(x=>{delete x._sk;delete x._q;delete x._o;delete x._sec});fd.situations=sits;fd.reference=ref;
+ const FM=feasModel(f,sits.length);if(s.type==="app"&&!o.fixed){const[a2,b2]=feasPair(FM.maxObj,(+o.a)/(+o.b),niv);o.a=a2;o.b=b2;o.critere=critPhrase(o.unit,a2,b2);f.objCritere=o.critere}
  const secu=[bank.regle,T.secu.split(" ; ")[0].replace(/\.?$/,".")].concat(s.type==="app"?xs.filter(Boolean).slice(0,1):[]).concat(cats.filter(c=>c.secu).map(c=>c.secu));fd.consSecu=[...new Set(secu)].join(" ");
  const orga=(s.type!=="app"?["Respecter l’ordre de passage et le rôle de chaque groupe."]:fam===AT&&window.AT_ATELIERS?[AT_ATELIERS]:[T.orga.split(" ; ")[0].replace(/\.?$/,".")]).concat(s.type==="app"?xo.filter(Boolean).slice(0,2):[]).concat(cats.filter(c=>c.orga).map(c=>c.orga)).slice(0,3);fd.consOrga=[...new Set(orga)].join("\n");
- if(s.type==="app"){const q=[`Au moins ${o.a} ${o.unit} sur ${o.b} (${o.a}/${o.b}).`];const seenQ=new Set();xq.slice(0,2).forEach((t,i)=>{if(t&&!seenQ.has(t)){seenQ.add(t);q.push(`S${i+1} : ${t}`)}});cats.forEach(c=>{if(c.quant&&c.quant[fam])q.push(fill(c.quant[fam],ctx))});fd.critQuant=[...new Set(q)].slice(0,3).join("\n")}
+ if(s.type==="app"){const q=[o.fixed?"Chaque élève atteint l’objectif "+o.critere+".":`Au moins ${o.a} ${o.unit} sur ${o.b} (${o.a}/${o.b}).`];const seenQ=new Set();xq.slice(0,2).forEach((t,i)=>{if(t&&!seenQ.has(t)){seenQ.add(t);q.push(`S${i+1} : ${t}`)}});cats.forEach(c=>{if(c.quant&&c.quant[fam])q.push(fill(c.quant[fam],ctx))});fd.critQuant=[...new Set(q)].slice(0,3).join("\n")}
  else fd.critQuant=s.type==="diag"?"Tous les élèves (100 %) passent le test et sont observés.":"Tous les élèves (100 %) sont évalués selon la grille.";
  const base=s.type==="app"?P.qual.split("\n"):[s.type==="diag"?"Fiches d’observation complètes et exploitables.":"Respect des critères de la grille d’évaluation."];
  const ql=[base[0]].concat(cats.slice(0,2).map(c=>c.qual),base.slice(1));fd.critQual=[...new Set(ql)].slice(0,3).join("\n");
  if(fam===GY&&typeof gyApply==="function")gyApply(f,s,o,bank,ctx,fd,cats,v,n);
+ {const M=feasModel(f,fd.situations.length),fx=(t,i)=>feasFix(t,i?M.maxSit:M.maxObj,niv,i?M.Dsit:M.Deff);fd.critQuant=fd.critQuant.split("\n").map((l,i)=>fx(l,i)).join("\n");
+  fd.situations.forEach(x=>{x.conditions=fx(x.conditions,1);x.criteres=fx(x.criteres,1);x.simplifier=fx(x.simplifier,1);x.complexifier=fx(x.complexifier,1)});fd.consOrga=fx(fd.consOrga,1);fd.consSecu=fx(fd.consSecu,1)}
  try{if(fd._gyPanels&&fd._gyPanels.length){fd.schema=composeSchema(fd._gyPanels,{legend:"gy"});fd.schemaH=fd._gyPanels.length*354-6+70}else{fd.schema=composeSchema(sits.map((x,i)=>({label:`Situation ${i+1} : ${x.titre}`,sk:buildSk(f,bank,sks[i],ctx,i)})),{legend:fam===SC||fam===RV});fd.schemaH=sits.length*354-6+(fam===SC||fam===RV?70:0)}delete fd._gyPanels;fd.sketch=null;
   ini.schema=composeSchema([{label:"Échauffement",sk:buildSk(f,bank,{k:"ini"},ctx,0)}]);ini.sketch=null;ini.schemaH=348;fin.schemaH=348;
   fin.schema=composeSchema([{label:"Retour au calme – bilan",sk:{bg:"vierge",items:fieldCircle()}}]);fin.sketch=null}catch(e){console.warn(e)}
