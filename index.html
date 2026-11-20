@@ -848,6 +848,7 @@ function renderEditor(){
   ${fd.situations.map((s,i)=>`<div class="sit"><div class="sh"><b>Situation ${i+1}</b><input type="text" data-b="phases.fond.situations.${i}.titre" value="${esc(s.titre)}" placeholder="Titre (facultatif) : Atelier N°1, 3 contre 3…">
    ${i>0?`<button class="mini" data-mv="${i}" title="Monter">↑</button>`:""}<button class="mini del" data-rs="${i}">Supprimer</button></div>
    <div class="sb">
+    <div class="f"><label class="lb">Principe d’action</label><input type="text" data-b="phases.fond.situations.${i}.principe" value="${esc(s.principe||"")}" placeholder="ex. Course d’élan"></div>
     <div class="f"><label class="lb">But <span class="hint">finalité : capacité développée + afin de…</span></label>${ta(`phases.fond.situations.${i}.but`,"ex. Développer la vitesse de démarrage afin de maintenir une accélération",2)}</div>
     <div class="f"><label class="lb">Conditions de réalisation</label>${ta(`phases.fond.situations.${i}.conditions`,"Organisation, espace, effectif, matériel…",3)}</div>
     <div class="f"><label class="lb">Critères de réalisation</label>${ta(`phases.fond.situations.${i}.criteres`,"Comment réaliser la tâche…",3)}</div>
@@ -953,6 +954,7 @@ function ficheRaw(f,word,fsIn){const fs=fsIn||11,pd=fs<9?"0.5pt 2pt":"1pt 2.5pt"
  let cont="";
  sits.forEach((s,i)=>{
   if(multi||s.titre.trim())cont+=`<div style="margin-top:${i?5:0}px">${lbl(`<u>${/^(Atelier|Test bilan)\b/.test(s.titre.trim())?esc(s.titre.trim()):`Situation ${i+1}${s.titre.trim()?" : "+esc(s.titre.trim()):""}`}</u>`)}</div>`;
+  if(String(s.principe||"").trim())cont+=`<div>${lbl("Principe d’action :")} ${esc(s.principe)}${(s.regles||[]).length?` — ${lbl("Règles d’action :")} ${esc(s.regles.join(" ; "))}`:""}</div>`;
   if(String(s.but||"").trim())cont+=`<div>${lbl("But :")} ${nl(s.but)}</div>`;
   if(s.conditions.trim())cont+=`<div>${lbl("Conditions de réalisation :")} ${nl(s.conditions)}</div>`;
   if(s.criteres.trim())cont+=`<div>${lbl("Critères de réalisation :")} ${nl(s.criteres)}</div>`;
@@ -1161,7 +1163,8 @@ function refOf(niv,fam){const P=PROFIL[niv];
 /* Plan du cycle : renvoie la liste des 10 séances (ou 12) */
 function cyclePlan(niv,fam,aps){if(!isCyc(niv,fam))return null;const C=(aps&&typeof CYCLE_APS!=="undefined"&&CYCLE_APS[aps]&&CYCLE_APS[aps](niv))||CYCLE[niv][fam],P=PROFIL[niv],ref=refOf(niv,fam);
  const out=[{n:1,type:"diag",seq:"Évaluation diagnostique",verbe:"Prévoir",contenu:`le projet du cycle à partir du niveau de pratique des élèves observé par la situation de référence (${ref.replace(/\.$/,"")})`,critere:"en observant tous les élèves à l’aide d’une fiche d’observation"}];
- C.it.forEach((x,i)=>out.push({n:i+2,type:"app",seq:C.seq[i<4?0:1],verbe:x[0],contenu:x[1],unite:x[2],m:x[3],crit:x[4]||"",critere:x[4]||`avec au moins ${P.ratio} ${x[2]}`}));
+ const IT=typeof princOrder==="function"?princOrder(aps,fam,C.it):C.it;
+ IT.forEach((x,i)=>out.push({n:i+2,type:"app",seq:C.seq[i<4?0:1],verbe:x[0],contenu:x[1],unite:x[2],m:x[3],crit:x[4]||"",tag:x[5]||null,pr:x[6]||0,critere:x[4]||`avec au moins ${P.ratio} ${x[2]}`}));
  out.push({n:10,type:"som",seq:"Évaluation sommative",verbe:"Évaluer",contenu:`le niveau atteint par les élèves au regard de l’OTC par la situation de référence (${ref.replace(/\.$/,"")})`,critere:"en évaluant tous les élèves selon la grille d’évaluation du cycle"});
  return out}
 function planFor(niv,fam,n,len,aps){const p=cyclePlan(niv,fam,aps);if(!p)return null;n=parseInt(n)||1;len=parseInt(len)||10;
@@ -1301,7 +1304,7 @@ ed.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
   cur=first;afterSwitch(len+" fiches du cycle créées")},"Créer les fiches")}
  else if(t.id==="goCheck"){const c=$("#cohCard");if(c)c.scrollIntoView({behavior:"smooth"})}});
 
-function planCell(f,p){const b=BANK[f.aps];if(b&&b.fam===f.famille){const o=objParts(f,p,b);if(p.type==="app"&&!o.fixed){const M=feasModel(f,3),[a2,b2]=feasPair(M.maxObj,(+o.a)/(+o.b),f.niveau);o.critere=critPhrase(o.unit,a2,b2)}return `<b>${esc(o.verbe)}</b> ${esc(o.contenu)}, ${esc(o.critere)}.`}
+function planCell(f,p){const b=BANK[f.aps];if(b&&b.fam===f.famille){const o=objParts(f,p,b);if(p.type==="app"&&!o.fixed){const M=feasModel(f,2),[a2,b2]=feasPair(M.maxObj,(+o.a)/(+o.b),f.niveau);o.critere=critPhrase(o.unit,a2,b2)}return `<b>${esc(o.verbe)}</b> ${esc(o.contenu)}, ${esc(o.critere)}.`}
  return `<b>${esc(p.verbe)}</b> ${esc(p.contenu)}, ${esc(p.critere)}.`}
 /* ===================== BANQUE DE CONTENUS PAR APS SUPPORT ===================== */
 /* Gabarits de situations des sports collectifs : {B} balle, {C} cible, {Z} zone de marque, {T} tir, {R1} surnombre, {R2} quasi-égalité, {R3} égalité, {a} effectif */
@@ -1799,12 +1802,13 @@ function gyApply(f,s,o,bank,ctx,fd,cats,v,n){const niv=f.niveau,ag=gyIsAgres(ban
    atl(1,null,{t:`présentation devant un jury d’élèves`,c:`Chaque gymnaste présente son enchaînement (${compo}) ; 3 juges notent difficulté et exécution ; rotation des rôles.`},"Salut au début et à la fin ; sans chute ; amplitude et rythme.","Enchaînement réduit.","Enchaînement complet avec rythme imposé."),
    atl(2,null,{t:"retour du jury",c:"Le jury donne un point fort et un point faible sur la qualité de réalisation ; le gymnaste corrige et refait l’élément."},"Correction visible.","Un seul critère observé.","Deux critères corrigés.")];
   qx=[`Note de difficulté conforme à la composition ${compo} pour ${pct} des élèves.`,"Écart entre les juges inférieur à 1 point."]}
+ {const keep=sits.slice(0,2).map(x=>x.titre);if(s.type!=="app"&&pan.length>2)pan=pan.filter(p=>keep.includes(p.label)||!sits.some(x=>x.titre===p.label));sits=sits.slice(0,2);}
  if(s.type==="app"){fd.situations=sits;
   const ren=els.find(e=>/Pareur|pareurs/.test(e.par)&&(e.f==="ren"||ag))||els.find(e=>/areur/.test(e.par))||els[0];
   fd.consSecu=`${bank.regle} Parade : ${lcfirst(ren.par).replace(/\.$/,"")}. Cheveux attachés, sans bijoux.`+cats.filter(c=>c.secu).map(c=>" "+c.secu).join("");
-  fd.consOrga=[`Trois groupes, un par atelier ; rotation au signal toutes les ${Math.floor(feasModel(f,3).Dsit)} min (G1 → G2 → G3).`,"Rôles tournants : exécutant, pareur, observateur (binômes A.A’ – B.B’ : le partenaire pare, observe et conseille avec la fiche d’observation)."].concat(cats.filter(c=>c.orga&&c.k!=="roles"&&c.k!=="obs").map(c=>c.orga).slice(0,2)).join("\n");
+  fd.consOrga=[`Deux groupes, un par atelier ; rotation au signal toutes les ${Math.floor(feasModel(f,2).Dsit)} min (G1 ↔ G2).`,"Rôles tournants : exécutant, pareur, observateur (binômes A.A’ – B.B’ : le partenaire pare, observe et conseille avec la fiche d’observation)."].concat(cats.filter(c=>c.orga&&c.k!=="roles"&&c.k!=="obs").map(c=>c.orga).slice(0,2)).join("\n");
   const q=[`Au moins ${o.a} ${o.unit} sur ${o.b} (${o.a}/${o.b}).`].concat(qx);fd.critQuant=[...new Set(q)].slice(0,3).join("\n");
-  pan=[{label:"Circuit de 3 ateliers – rotation",sk:gyCircuit(sits.map((x,i)=>els[i]?gyShort(els[i].n):x.titre.replace(/^Atelier \d+ : /,"").split(/\s+/).slice(0,3).join(" ")))}].concat(sits.slice(0,3).map((x,i)=>({label:x.titre,sk:gySk(bank,els[i]||els[0],i,m.m)})))}
+  pan=[{label:"Circuit de 2 ateliers – rotation",sk:gyCircuit(sits.map((x,i)=>els[i]?gyShort(els[i].n):x.titre.replace(/^Atelier \d+ : /,"").split(/\s+/).slice(0,3).join(" ")))}].concat(sits.slice(0,2).map((x,i)=>({label:x.titre,sk:gySk(bank,els[i]||els[0],i,m.m)})))}
  else{fd.situations=sits;fd.consSecu=`${bank.regle} Parade assurée par un camarade formé ; cheveux attachés, sans bijoux.`+cats.filter(c=>c.secu).map(c=>" "+c.secu).join("")}
  fd.critQual=(fd.critQual||"").replace(/de l’arbitre/g,"du juge").replace("(arbitre, observateur, juge)","(pareur, observateur, juge)");
  fd._gyPanels=pan}
@@ -1854,7 +1858,7 @@ function feasModel(f,nSits){const bank=BANK[f.aps]||{},fam=bank.fam||f.famille,f
  const Deff=D-tr*(nS-1),Dsit=Math.floor(Deff/nS*10)/10;let t,load,unit,how;
  if(fam===SC){const grp=Math.ceil(N/6),sp=4;t=0.5;load=Math.ceil(grp/sp);unit="attaques par équipe";how=`${grp} groupes de 6 sur ${sp} espaces, ${load} groupes par espace, 30 s par attaque`}
  else if(fam===RV){const P=10;t=0.3;load=N/P;unit="essais par élève";how=`${P} joueurs actifs en même temps (terrains réduits), 18 s par essai`}
- else if(fam===GY){const P=6;t=0.25;load=N/P;unit="passages par élève";how=`3 ateliers × 2 postes = ${P} gymnastes en même temps, 15 s par passage`}
+ else if(fam===GY){const P=6;t=0.25;load=N/P;unit="passages par élève";how=`2 ateliers × 3 postes = ${P} gymnastes en même temps, 15 s par passage`}
  else{const m=FEAS_AT[f.aps]||{P:6,t:0.5};if(m.run){t=m.t;load=1;unit="fractions";how="toute la classe court en même temps, 5 min par fraction (course + récupération)"}
   else{t=m.t;load=N/m.P;unit="essais par élève";how=`${m.P} couloirs / postes en même temps, ${Math.round(m.t*60)} s par essai`}}
  const cap=x=>Math.max(0,Math.floor(x+1e-9));
@@ -1902,7 +1906,7 @@ function taskCond(f,bank,s,tag,ctx,v,c){if(/\d+\s*(?:m\b|min|×|contre)/.test(c)
   const sp={conservation:"sur un demi-terrain",demarquage:"sur un demi-terrain",progression:"contre une défense étagée",tir:bank.bg==="basket"?"face au panier":"face au gardien de but",defense:"face à une attaque organisée",montee:"sur tout le terrain",collectif:"sur terrain réduit"}[tag]||"";
   return [rv?`en ${rv}`:"",/défense|attaque organisée/.test(c)&&/défense|attaque/.test(sp)?"":sp].filter(Boolean).join(" ")}
  if(bank.fam===AT){const T=AT_COND[f.aps];if(!T)return"";const x=fill(T[tag]||T.technique,ctx);return /\{/.test(x)?"":x}
- if(bank.fam===GY){const m=(s.m||{}).m;if(m==="elts")return /atelier/.test(c)?(/parade/.test(c)?"":"avec la parade d’un camarade"):/parade/.test(c)?"en 3 ateliers tournants":"en 3 ateliers tournants avec la parade d’un camarade";if(m==="liai")return gyIsAgres(bank)?"à chaque agrès":"sur une longueur de praticable";if(m==="proj"||m==="ench")return /devant|observateur|binôme|jury/.test(c)?"":"devant son binôme observateur";return""}
+ if(bank.fam===GY){const m=(s.m||{}).m;if(m==="elts")return /atelier/.test(c)?(/parade/.test(c)?"":"avec la parade d’un camarade"):/parade/.test(c)?"en 2 ateliers tournants":"en 2 ateliers tournants avec la parade d’un camarade";if(m==="liai")return gyIsAgres(bank)?"à chaque agrès":"sur une longueur de praticable";if(m==="proj"||m==="ench")return /devant|observateur|binôme|jury/.test(c)?"":"devant son binôme observateur";return""}
  return""}
 function ptRedundant(c,pt){const P=[...stems(pt)];if(!P.length)return false;const C=stems(c);return P.filter(x=>C.has(x)).length/P.length>=0.5}
 function ptAlt(fam,tag,c,verb){const d=/d[ée]fen|r[ée]cup|couvr/i.test(tag+" "+(verb||""));return fam===SC?(d?"pour empêcher l’équipe adverse de marquer":/marqu|tir/i.test((verb||"")+" "+tag)?"pour faire gagner son équipe":"pour se créer une occasion de marquer"):fam===RV?(d?"pour empêcher la balle de tomber dans son camp":"pour gagner l’échange"):fam===GY?"pour réaliser un enchaînement correct":"pour améliorer sa performance"}
@@ -2028,12 +2032,13 @@ function gyTagOf(s){const t=norm((s.titre||"")+" "+(s.conditions||""));return /j
 function assignButs(f,bank,s,o,v){const fam=bank.fam,fd=f.phases.fond,obj=objSentence(f),k=(parseInt(f.seance)||1)+(v||0),used=new Set();
  f.phases.ini.but=BUT_INI[k%BUT_INI.length];f.phases.fin.but=BUT_FIN[k%BUT_FIN.length];
  const ev=s.type!=="app";
- const main=ev?BUT_EVAL[s.type==="diag"?"diag":"som"]:butRot(fam,f.aps,o.tag,k);
+ const PB=!ev&&typeof PRINC!=="undefined"&&PRINC[f.aps]&&(PRINC[f.aps][s.pr||0]||{}).b||null,rp=(a,n)=>a.slice(n%a.length).concat(a.slice(0,n%a.length));
+ const main=ev?BUT_EVAL[s.type==="diag"?"diag":"som"]:PB?rp(PB,k).concat(butRot(fam,f.aps,o.tag,k)):butRot(fam,f.aps,o.tag,k);
  const rot=(a,n)=>a.length?a.slice(n%a.length).concat(a.slice(0,n%a.length)):a;
  fd.but=butPick(main,[obj].concat(fd.situations.map(x=>x.conditions)),used);used.add(fd.but);
  fd.situations.forEach((x,i)=>{const tg=fam===GY?gyTagOf(x):(x._tg||o.tag);
-  const c=ev?(i===0?BUT_EVAL[s.type==="diag"?"diag":"som"].slice(2).concat(butList(fam,f.aps,tg)):BUT_EVAL[s.type==="diag"?"diag":"som"].slice(1)):butRot(fam,f.aps,tg,i+k+1);
-  x.but=butPick(c,[obj,x.conditions],used,fam===AT||fam===GY?(x.titre||"")+" "+(x.criteres||""):"");used.add(x.but);delete x._tg})}
+  const c=ev?(i===0?BUT_EVAL[s.type==="diag"?"diag":"som"].slice(2).concat(butList(fam,f.aps,tg)):BUT_EVAL[s.type==="diag"?"diag":"som"].slice(1)):PB?rp(PB,i+k+1).concat(butRot(fam,f.aps,tg,i+k+1)):butRot(fam,f.aps,tg,i+k+1);
+  x.but=butPick(c,[obj,x.conditions],used,!PB&&(fam===AT||fam===GY)?(x.titre||"")+" "+(x.criteres||""):"");used.add(x.but);delete x._tg})}
 /* Audit du but : finalité, pas de reprise de l’objectif ni des conditions */
 const BUT_INF=/^(Développer|Améliorer|Construire|Maîtriser|Mobiliser|Préparer|Activer|Favoriser|Faciliter|Ramener|Identifier|Repérer|Observer|Réinvestir|Évaluer|Mobiliser)\b/;
 function butAudit(f){const fd=f.phases.fond,obj=objSentence(f),bad=[];
@@ -2042,6 +2047,99 @@ function butAudit(f){const fd=f.phases.fond,obj=objSentence(f),bad=[];
   const r=butOv(b,txt);if(r>=0.4)bad.push(where+`: reprend l’objectif / les conditions (${Math.round(r*100)} %)`)};
  chk(fd.but,[obj].concat(fd.situations.map(x=>x.conditions)),"but");chk(f.phases.ini.but,"","but échauffement");chk(f.phases.fin.but,"","but retour au calme");
  fd.situations.forEach((x,i)=>{if(x.but!==undefined)chk(x.but,[obj,x.conditions],"but situation "+(i+1))});return bad}
+/* ===== Principes d’action → règles d’action, par APS (ordre = progression du cycle) =====
+   t : intentions (tags) rattachées au principe ; secu : principe de sécurité transversal. */
+const PR_SC=[
+ {p:"Conserver collectivement la balle",t:["conservation","demarquage"],r:["Se démarquer dans un espace libre pour offrir une solution au porteur","Regarder le partenaire avant de passer","Protéger la balle face au défenseur","Enchaîner réception et passe sans temps mort","Passer au partenaire le mieux placé"]},
+ {p:"Progresser vers la cible adverse",t:["progression","montee"],r:["Jouer vers l’avant dès que possible","Occuper la largeur et la profondeur du terrain","Fixer un défenseur pour libérer un partenaire","Accélérer le jeu avant le repli défensif","Avancer avec la balle quand l’espace est libre"]},
+ {p:"Marquer en position favorable",t:["tir"],r:["Tirer proche et face à la cible","Choisir entre tirer et passer selon la position du défenseur","Enchaîner course, réception et tir sans temps mort","Viser les zones libres de la cible"]},
+ {p:"Défendre sa cible et récupérer la balle",t:["defense","collectif"],r:["Se placer entre l’adversaire et sa cible","Gêner le porteur sans faute","Couper les trajectoires de passe","Défendre ensemble : aide et changement d’adversaire","Enchaîner récupération et contre-attaque"]}];
+const PRINC={
+ "Handball":PR_SC,"Basketball":PR_SC,"Football":PR_SC,
+ "Volley-ball":[
+  {p:"Renvoyer la balle dans le camp adverse",t:["service","renvoi"],r:["Se placer sous la balle avant le contact","Orienter les surfaces de frappe vers la cible","Renvoyer dans les espaces libres adverses","Servir dans le terrain adverse"]},
+  {p:"Se déplacer et réceptionner pour assurer la continuité",t:["deplacement","reception"],r:["Lire la trajectoire et se déplacer tôt","Réceptionner jambes fléchies, bras tendus (manchette) ou mains en coupe (touche haute)","Orienter la réception vers le partenaire","Rester en position d’attente basse et dynamique"]},
+  {p:"Construire l’attaque",t:["passe","organisation"],r:["Utiliser les trois touches","Faire une passe haute vers la zone avant","Attaquer depuis la zone avant vers un espace libre","Annoncer le ballon (« j’ai ») avant d’intervenir"]},
+  {p:"Défendre son terrain",t:["defense"],r:["Se répartir l’espace en zones de responsabilité","Couvrir le partenaire qui intervient","Revenir en position d’attente après chaque intervention"]}],
+ "Course de vitesse":[
+  {p:"Réagir et démarrer vite",t:["technique"],r:["Réagir dès le signal","Pousser fort sur les deux jambes au départ","Se redresser progressivement","Faire des premières foulées courtes et rapides"]},
+  {p:"Atteindre sa vitesse maximale",t:["rythme"],r:["Courir sur l’avant du pied","Balancer les bras fléchis d’avant en arrière","Augmenter la fréquence des foulées","Rester relâché (épaules, visage)"]},
+  {p:"Maintenir sa vitesse jusqu’à l’arrivée",t:["effort","perf","defi","collectif"],r:["Garder sa vitesse jusqu’après la ligne","Rester dans son couloir","Regarder vers l’arrivée sans se retourner","Pencher le buste en franchissant la ligne"]}],
+ "Course de haies":[
+  {p:"Franchir la haie sans ralentir",t:["technique"],r:["Attaquer la haie loin, jambe d’attaque tendue","Passer la jambe d’esquive sur le côté","Garder le buste penché vers l’avant","Reprendre la course dès la réception"]},
+  {p:"Courir en rythme entre les haies",t:["rythme"],r:["Garder trois appuis entre les haies","Courir sur l’avant du pied entre les haies","Garder la même jambe d’attaque"]},
+  {p:"Maintenir sa vitesse jusqu’à l’arrivée",t:["effort","perf","defi","collectif"],r:["Attaquer chaque haie à la même vitesse","Rester dans son couloir","Accélérer après la dernière haie"]}],
+ "Relais":[
+  {p:"Transmettre le témoin",t:["technique"],r:["Donner le signal vocal « hop »","Tendre le bras en arrière, paume ouverte","Transmettre le témoin de bas en haut","Changer le témoin de main après la réception"]},
+  {p:"Partir au bon moment",t:["rythme"],r:["Partir quand le donneur atteint la marque","Accélérer sans se retourner","Transmettre dans la zone"]},
+  {p:"Maintenir la vitesse de l’équipe",t:["effort","perf","defi","collectif"],r:["Accélérer jusqu’à la transmission (donneur)","Être lancé à pleine vitesse (receveur)","Rester dans son couloir après la transmission"]}],
+ "Saut en longueur":[
+  {p:"Construire une course d’élan efficace",t:["rythme"],r:["Courir avec une vitesse progressive","Garder des repères d’élan réguliers","Accélérer sur les derniers appuis"]},
+  {p:"Impulser vers l’avant et le haut",t:["technique"],r:["Poser le pied d’appel à plat, actif","Monter le genou libre et les bras","Regarder loin devant, pas la planche"]},
+  {p:"Se réceptionner loin",t:["effort","perf","defi","collectif"],r:["Ramener les jambes vers l’avant","Projeter les bras vers l’avant","Tomber vers l’avant à la réception"]}],
+ "Saut en hauteur":[
+  {p:"Course d’élan",b:["Développer la vitesse d’élan afin de préparer une impulsion puissante.","Maîtriser l’inclinaison du corps en courbe afin de préparer la rotation.","Construire des repères d’élan afin d’arriver au bon endroit.","Construire une course d’élan courbe afin d’arriver équilibré à l’appel.","Améliorer la régularité de l’élan afin de retrouver toujours le même point d’appel."],r:["Courir une trajectoire rectiligne puis curviligne","Garder une vitesse haute et dynamique","Accélérer sur les derniers appuis pour l’impulsion"]},
+  {p:"Appel",b:["Développer la détente verticale afin de transformer la vitesse en élévation.","Construire un appel tonique afin de quitter le sol avec puissance.","Développer la coordination bras-jambes afin d’augmenter l’envol.","Améliorer l’action des bras et de la jambe libre afin de s’élever plus haut.","Maîtriser la rotation à l’appel afin de se placer dos à la barre."],r:["Amortir puis tendre la jambe d’appel","Poser le pied d’appel en avant du bassin","Tourner le dos à la barre (rotations longitudinale et transversale)","Lancer les bras et la jambe libre vers le haut"]},
+  {p:"Franchissement",b:["Développer le gainage afin de passer la barre sans la toucher.","Construire une position dorsale efficace afin d’enrouler le corps autour de la barre.","Maîtriser le relâchement après le passage du bassin afin de libérer les jambes.","Maîtriser l’enchaînement des segments afin de franchir de plus grandes hauteurs.","Améliorer la coordination en l’air afin de dégager les jambes au bon moment."],r:["Rester gainé et aligné au-dessus de la barre","Rapprocher les segments après le passage du bassin","Monter les jambes au-dessus de la barre"]},
+  {p:"Réception",b:["Construire une réception sécurisée afin de sauter sans risque de blessure.","Développer la confiance en soi afin d’oser franchir en sécurité.","Améliorer le contrôle de la chute afin d’enchaîner les essais sans appréhension.","Maîtriser la position du corps à la chute afin de protéger la nuque et le dos.","Mobiliser toutes ses ressources afin de réaliser sa meilleure performance."],r:["Se réceptionner sur le dos (haut du dos) sur le tapis","Garder le grand axe du corps perpendiculaire à la barre","Rentrer le menton à la réception"]}],
+ "Lancer de poids":[
+  {p:"Contrôler les différentes parties du corps pour ne pas perturber le lancer",b:["Construire un placement stable de l’engin afin de lancer sans perturbation.","Maîtriser l’orientation du corps afin de garder le lancer dans le secteur.","Construire des repères corporels afin de reproduire un geste fiable.","Développer le contrôle segmentaire afin d’orienter le lancer dans l’axe.","Améliorer la précision du geste afin de maîtriser la trajectoire de l’engin."],r:["Tenir l’engin à la base des doigts, au cou","Placer l’engin par rapport au corps (coude haut)","Lancer dans l’axe du secteur","Varier l’angle d’envol","Lancer précisément vers une cible"]},
+  {p:"Gagner de la distance grâce à l’élan",b:["Développer la vitesse de l’élan afin de gagner de la distance au lancer.","Maîtriser la continuité entre élan et poussée afin de garder l’énergie acquise.","Construire des appuis dynamiques afin d’allonger le trajet de l’engin.","Construire un élan rasant et continu afin de ne perdre aucune vitesse.","Améliorer le placement des appuis afin de pousser dans le bon axe."],r:["Éloigner au maximum la jambe opposée de l’engin en double appui","Avancer les appuis vers l’avant du cercle","Éviter toute perte de vitesse entre l’élan et le lancer"]},
+  {p:"Obtenir une grande vitesse d’envol",b:["Développer la force explosive afin d’augmenter la vitesse d’envol.","Construire une poussée de bas en haut afin de donner un bon angle d’envol.","Mobiliser les grands groupes musculaires afin de lancer plus loin.","Améliorer l’enchaînement jambes-tronc-bras afin de transmettre toute la force à l’engin.","Maîtriser le fouetté final afin d’accélérer l’engin jusqu’au lâcher."],r:["Utiliser toute la force du corps sur l’engin (jambes, tronc, bras)","Allonger le chemin de lancement","Finir par un fouetté de la main"]},
+  {p:"Lancer en sécurité et selon le règlement",b:["Développer le respect des règles afin de lancer et juger en sécurité.","Développer l’autonomie dans les rôles afin d’assurer un concours équitable.","Maîtriser ses émotions en compétition afin de réussir ses essais.","Mobiliser toutes ses ressources afin de réaliser sa meilleure performance.","Construire la responsabilité dans les rôles afin d’organiser un concours fiable."],r:["Lancer dans une aire d’élan limitée","Juger l’essai valide ou non","Mesurer depuis l’empreinte jusqu’au cercle","Attendre le signal avant de lancer et de ramasser"]}],
+ "Course d'endurance":[
+  {p:"Courir en aisance respiratoire",r:["Respirer régulièrement","Courir avec une foulée souple et économique","Pouvoir parler en courant"]},
+  {p:"Construire et réguler son allure",r:["Passer chaque plot au signal","Comparer allure annoncée et allure réalisée","Ajuster son allure grâce aux repères"]},
+  {p:"Gérer son effort selon ses ressources",r:["Courir au pourcentage prévu de sa VMA","Récupérer en marchant entre les fractions","Finir la course sans s’arrêter"]}],
+ "Gymnastique au sol":null,"Gymnastique aux agrès":null};
+const PR_GY=[
+ {p:"Maîtriser les éléments par difficulté",t:["elements","rotation","equilibre"],r:["Garder le corps gainé et aligné","Rentrer le menton dans les rotations","Pousser fort sur les bras dans les renversements","Se réceptionner stable, pieds joints"]},
+ {p:"Enchaîner les éléments",t:["liaison"],r:["Lier les éléments sans arrêt ni pas supplémentaire","Finir chaque élément dans la position de départ du suivant","Varier les rythmes et les directions"]},
+ {p:"Composer et présenter un enchaînement",t:["projet","presentation"],r:["Choisir des éléments maîtrisés selon la composition","Présenter avec amplitude et tenue","Marquer le début et la fin par le salut"]},
+ {p:"Observer et juger une prestation",t:["juge"],r:["Utiliser la fiche d’observation et le code de pointage","Repérer un point fort et un point à corriger","Noter avec objectivité"]}];
+PRINC["Gymnastique au sol"]=PR_GY;PRINC["Gymnastique aux agrès"]=PR_GY;
+const PR_SECU={"Lancer de poids":"Principe de sécurité : lancer dans l’aire d’élan limitée, au signal ; ramasser l’engin seulement au signal ; personne dans le secteur.","Saut en hauteur":"Principe de sécurité : réception uniquement sur le tapis, grand axe perpendiculaire à la barre ; un seul sauteur à la fois."};
+function princIdx(aps,tag){const P=PRINC[aps];if(!P)return 0;const i=P.findIndex(x=>(x.t||[]).includes(tag));return i<0?0:i}
+/* Plans propres : lancer de poids et saut en hauteur (ordre des principes) — [verbe, contenu, unité, m, crit, tag, principe] */
+function poidsPlan(niv){const C=CYCLE[niv]&&CYCLE[niv][AT];if(!C)return null;const lyc=["TC","1BAC","2BAC"].includes(niv);
+ return{seq:C.seq,it:[
+  ["Tenir","l’engin au cou, coude haut, et le pousser dans l’axe du secteur afin de contrôler sa position par rapport au corps","lancers contrôlés",null,null,"technique",0],
+  ["Lancer","en variant l’angle d’envol vers des repères de hauteur afin de trouver la trajectoire la plus efficace","lancers dans le secteur",null,null,"technique",0],
+  ["Viser","une zone cible au sol afin de contrôler la précision de son lancer","lancers dans la zone visée",null,null,"technique",0],
+  ["Enchaîner",lyc?"un élan rasant (pas chassés ou glissée) et la poussée sans arrêt afin de conserver la vitesse acquise":"un élan rasant en pas chassés et la poussée sans arrêt afin de conserver la vitesse acquise","lancers enchaînés",null,null,"rythme",1],
+  ["Placer","ses appuis en double appui, jambe opposée éloignée de l’engin, afin d’allonger le trajet de poussée","doubles appuis corrects",null,null,"rythme",1],
+  ["Pousser","l’engin avec les jambes, le tronc puis le bras jusqu’au fouetté de la main afin d’augmenter la vitesse d’envol","poussées complètes",null,null,"effort",2],
+  ["Allonger","le chemin de lancement de l’arrière vers l’avant du cercle afin de transmettre toute la force du corps à l’engin","lancers améliorés",null,null,"perf",2],
+  ["Réaliser","un concours réglementaire en assurant les rôles de juge et de mesureur afin de produire sa meilleure performance en sécurité","essais valides",null,null,"defi",3]]}}
+function hauteurPlan(niv){const C=CYCLE[niv]&&CYCLE[niv][AT];if(!C)return null;const lyc=["TC","1BAC","2BAC"].includes(niv),st=lyc?"en dorsal (fosbury)":"en ciseau";
+ return{seq:C.seq,it:[
+  ["Courir","un élan rectiligne puis courbe en accélérant afin d’arriver vite et équilibré à l’impulsion","élans réguliers",null,null,"rythme",0],
+  ["Étalonner","sa course d’élan en courbe avec des repères au sol afin de garder une vitesse dynamique jusqu’à l’appel","élans étalonnés",null,null,"rythme",0],
+  ["Impulser","sur le pied éloigné de la barre, pied d’appel devant le bassin, afin de transformer la vitesse en élévation","impulsions correctes",null,null,"technique",1],
+  ["Lancer","la jambe libre et les bras vers le haut à l’appel afin de s’élever en tournant le dos à la barre","impulsions avec montée active",null,null,"technique",1],
+  ["Franchir",`la barre ${st} en restant gainé puis en ramenant les jambes afin de passer sans faire tomber la barre`,"franchissements réussis",null,null,"technique",2],
+  ["Enchaîner",`élan, appel et franchissement ${st} sans rupture afin d’augmenter sa hauteur franchie`,"sauts réussis",null,null,"perf",2],
+  ["Se réceptionner","sur le haut du dos, grand axe perpendiculaire à la barre, afin de sauter en sécurité","réceptions correctes",null,null,"effort",3],
+  ["Réaliser","un concours avec montée de barre en jugeant les essais afin de produire sa meilleure performance","essais valides",null,null,"defi",3]]}}
+function otcLink(niv,it){const C=CYCLE[niv]&&CYCLE[niv][AT],ref=(OP[niv]&&OP[niv].otc[AT]||"")+" "+((C&&C.seq)||[]).join(" ");
+ const L={"1AC":"en organisant les mouvements du corps","2AC":"en organisant les mouvements du corps","3AC":"en gérant son effort physique","TC":"en maîtrisant l’organisation de son corps","1BAC":"en maîtrisant l’organisation de son corps","2BAC":"dans le cadre de son projet de performance"}[niv]||"";
+ it.forEach(x=>{if(L&&!shared(x[0]+" "+x[1],ref).length)x[1]=x[1].replace(/ afin d/," "+L+" afin d")});return it}
+CYCLE_APS["Lancer de poids"]=niv=>{const p=poidsPlan(niv);if(p)otcLink(niv,p.it);return p};CYCLE_APS["Saut en hauteur"]=niv=>{const p=hauteurPlan(niv);if(p)otcLink(niv,p.it);return p};
+/* Endurance : principe explicite (aisance → allure → gestion de l’effort) */
+(function(){const E=CYCLE_APS["Course d'endurance"];if(!E)return;const PR=[0,1,2,1,2,2,2,2];CYCLE_APS["Course d'endurance"]=niv=>{const p=E(niv);if(!p)return p;p.it.forEach((x,i)=>{x[5]=x[5]||null;x[6]=PR[i]});return p}})();
+/* Ordonne les séances d’apprentissage selon l’ordre des principes (tri stable : la progressivité interne est gardée) */
+function princOrder(aps,fam,it){if(!PRINC[aps])return it;const k=it.map((x,i)=>({x,i,p:x[6]!=null?x[6]:princIdx(aps,x[5]||tagOf(fam,x[0]+" "+x[1]))}));
+ k.sort((a,b)=>a.p-b.p||a.i-b.i);return k.map(o=>{const y=o.x.slice();y[6]=o.p;return y})}
+/* Principe + règles par situation (≤ 2 situations) */
+function assignPrinc(f,bank,s){const P=PRINC[f.aps],fd=f.phases.fond;if(!P)return;
+ if(s.type!=="app"){fd.situations.forEach((x,i)=>{x.principe=i?"Situation de référence : tous les principes":"Observation des principes du cycle";x.regles=P.map(p=>p.r[0]).slice(0,i?4:3)});}
+ else{const len=parseInt(f.cycleLen)||10,n=parseInt(f.seance)||1,pi=Math.min(P.length-1,s.pr||0),Pr=P[pi];
+  let rank=0;for(let j=1;j<n;j++){const q=planFor(f.niveau,bank.fam,j,len,f.aps);if(q&&q.type==="app"&&(q.pr||0)===pi&&!q.consol)rank++}
+  const R=Pr.r,st=(rank*2)%R.length;
+  fd.situations.forEach((x,i)=>{x.principe=Pr.p;x.regles=[R[(st+2*i)%R.length],R[(st+2*i+1)%R.length]].filter((v,j,a)=>a.indexOf(v)===j)})}
+ if(PR_SECU[f.aps]&&!fd.consSecu.includes("Principe de sécurité"))fd.consSecu=(fd.consSecu+" "+PR_SECU[f.aps]).trim()}
+function princAudit(f){const fd=f.phases.fond,bad=[];if(fd.situations.length>2)bad.push(fd.situations.length+" situations");
+ fd.situations.forEach((x,i)=>{if(!x.principe)bad.push("situation "+(i+1)+" sans principe");if(!(x.regles||[]).length)bad.push("situation "+(i+1)+" sans règle d’action")});return bad}
 /* ===================== GÉNÉRATEUR AUTOMATIQUE DE FICHE ===================== */
 const AUTO_APS=Object.keys(BANK);
 const FAMT_POUR={[SC]:SC_POUR,[RV]:RV_POUR};
@@ -2118,7 +2216,7 @@ function objParts(f,s,bank,vIn){const v=vIn!=null?vIn:(f.variant||0),ctx=ctxOf(f
    :P("Présenter",`son enchaînement ${bank.en} (${ctx.compo}) devant un jury d’élèves afin de mesurer ses progrès au regard de l’OTC`,"en obtenant sa note (difficulté /8 + exécution /12) selon la grille du cycle");
   return diag?P("Réaliser",`la situation de référence (${ref}) afin de situer sa performance de départ et de prévoir son projet de progrès`,"en relevant sa meilleure performance sur 2 essais")
    :P("Réaliser",`la situation de référence (${ref}) afin de mesurer ses progrès depuis le test de départ`,"en obtenant sa note selon la grille d’évaluation du cycle")}
- const tag=tagOf(fam,s.verbe+" "+s.contenu);let c=adaptContenu(s.contenu,bank,f);
+ const tag=s.tag||tagOf(fam,s.verbe+" "+s.contenu);let c=adaptContenu(s.contenu,bank,f);
  const pt=fill((bank.pour&&bank.pour[tag])||(FAMT_POUR[fam]||{})[tag]||"",ctx);
  c=withCond(c,typeof taskCond==="function"?taskCond(f,bank,s,tag,ctx,v,c):"",pt,fam,tag,s.verbe);
  const [a,b]=PROFIL[f.niveau].ratio.split("/");const unit=adaptUnit(s.unite,bank);
@@ -2162,7 +2260,7 @@ function genFiche(f,opt){opt=opt||{};const bank=BANK[f.aps];if(!bank||!OP[f.nive
  fin.but="Retour au calme et bilan de la séance.";fin.contenu=`Marche, respiration ; étirements : ${STRETCH[fam]}.\nBilan : questions / réponses sur les critères de réussite.\n${nextAnnonce(f,bank,n,len)}`;
  fin.consignes="Éviter les temps de ressort lors des étirements ; écouter les camarades pendant le bilan.";fin.criteres="Retour au calme effectif.\nQuestions / réponses, feed-back des élèves.";
  let sits;
- if(s.type==="app"){const tpls=pickSits(bank,o.tag,v+(s.consol?1:0),s.verbe+" "+s.contenu);sits=tpls.map((t,i)=>mkSit(t,bank,ctx,o.tag,i,tpls.length));
+ if(s.type==="app"){let tpls=pickSits(bank,o.tag,v+(s.consol?1:0),s.verbe+" "+s.contenu);if(tpls.length>2)tpls=[tpls[0],tpls[tpls.length-1]];sits=tpls.map((t,i)=>mkSit(t,bank,ctx,o.tag,i,tpls.length));
   fd.but=ucfirst(`${o.verbe} ${o.contenu}`)+".";}
  else{const first=fam===AT||fam===GY?mkSit(bank.sits[0],bank,ctx,tagOf(fam,bank.sits[0].tags[0]),0,2):mkSit(pickSits(bank,fam===SC?"conservation":"reception",v)[0],bank,ctx,fam===SC?"conservation":"reception",0,2);
   first.titre="Atelier d’observation : "+first.titre;first.criteres="Les observateurs notent les réussites sur la fiche d’observation. "+first.criteres;
@@ -2180,6 +2278,7 @@ function genFiche(f,opt){opt=opt||{};const bank=BANK[f.aps];if(!bank||!OP[f.nive
  if(fam===GY&&typeof gyApply==="function")gyApply(f,s,o,bank,ctx,fd,cats,v,n);
  {const M=feasModel(f,fd.situations.length),fx=(t,i)=>feasFix(t,i?M.maxSit:M.maxObj,niv,i?M.Dsit:M.Deff);fd.critQuant=fd.critQuant.split("\n").map((l,i)=>fx(l,i)).join("\n");
   fd.situations.forEach(x=>{x.conditions=fx(x.conditions,1);x.criteres=fx(x.criteres,1);x.simplifier=fx(x.simplifier,1);x.complexifier=fx(x.complexifier,1)});fd.consOrga=fx(fd.consOrga,1);fd.consSecu=fx(fd.consSecu,1)}
+ if(typeof assignPrinc==="function")assignPrinc(f,bank,s);
  if(typeof assignButs==="function")assignButs(f,bank,s,o,v);
  try{if(fd._gyPanels&&fd._gyPanels.length){fd.schema=composeSchema(fd._gyPanels,{legend:"gy"});fd.schemaH=fd._gyPanels.length*354-6+70}else{fd.schema=composeSchema(sits.map((x,i)=>({label:`Situation ${i+1} : ${x.titre}`,sk:buildSk(f,bank,sks[i],ctx,i)})),{legend:fam===SC||fam===RV});fd.schemaH=sits.length*354-6+(fam===SC||fam===RV?70:0)}delete fd._gyPanels;fd.sketch=null;
   ini.schema=composeSchema([{label:"Échauffement",sk:buildSk(f,bank,{k:"ini"},ctx,0)}]);ini.sketch=null;ini.schemaH=348;fin.schemaH=348;
@@ -2381,6 +2480,7 @@ async function ficheDocx(f){const TH=setDC(f),FS=fitFs(f),sz=Math.round(FS*2),TW
  const imW=Math.min(w4[6]/567*0.92,Math.min(130,Math.max(78,130*FS/10.5))*2.54/96);
  let cont="";const sits=fd.situations.filter(s=>Object.values(s).some(v=>String(v).trim()));
  sits.forEach((s,i)=>{if(sits.length>1||s.titre.trim())cont+=wp(wr(/^(Atelier|Test bilan)\b/.test(s.titre.trim())?s.titre.trim():`Situation ${i+1}${s.titre.trim()?" : "+s.titre.trim():""}`,{b:true,u:true,color:DC.D,sz}),{before:i?60:0});
+  if(String(s.principe||"").trim())cont+=wp(lb("Principe d’action : ")+t(String(s.principe).trim())+((s.regles||[]).length?t(" — ")+lb("Règles d’action : ")+t(s.regles.join(" ; ")):""));
   if(String(s.but||"").trim())cont+=wp(lb("But : ")+t(String(s.but).trim()));
   if(s.conditions.trim())cont+=wp(lb("Conditions de réalisation : ")+t(s.conditions.trim()));
   if(s.criteres.trim())cont+=wp(lb("Critères de réalisation : ")+t(s.criteres.trim()));
@@ -2414,7 +2514,7 @@ const ACQ={[SC]:["S’organiser collectivement en attaque et en défense.\n- Res
  [GY]:["Réaliser des éléments gymniques en sécurité.\n- Enchaîner et présenter un enchaînement.\n- Parer et juger un camarade.","Connaître les familles d’éléments et le code de pointage simplifié.\n- Connaître les règles de sécurité et de parade.","Respecter les consignes de sécurité.\n- Accepter le regard des autres.\n- Coopérer (parade, conseils)."]};
 function projetData(list){const f0=list[0]||cur,fam=f0.famille,acq=(ACQ[fam]||ACQ[SC]).map(s=>"- "+s.replace("{aps}",f0.aps));let prev="";
  const rows=list.map(f=>{const fd=f.phases.fond,seq=f.objSeq===prev?"":f.objSeq;prev=f.objSeq;const ev=/évaluation/i.test(f.objSeq);
-  return{n:f.seance,seq,obj:objSentence(f),cont:fd.situations.map(s=>s.titre).filter(Boolean).join(" ; "),eval:ev?(/diagnost/i.test(f.objSeq)?"Évaluation diagnostique (fiche d’observation)":"Évaluation sommative (grille du cycle)"):(fd.critQuant.split("\n")[0]||"")}});
+  const pr0=(fd.situations[0]||{}).principe;return{n:f.seance,seq,obj:objSentence(f),pr:pr0&&!ev?"Principe : "+pr0:"",cont:((fd.situations[0]||{}).principe&&!/évaluation/i.test(f.objSeq)?"Principe : "+fd.situations[0].principe+"\n":"")+fd.situations.map(s=>s.titre).filter(Boolean).join(" ; "),eval:ev?(/diagnost/i.test(f.objSeq)?"Évaluation diagnostique (fiche d’observation)":"Évaluation sommative (grille du cycle)"):(fd.critQuant.split("\n")[0]||"")}});
  return{f0,acq,rows,ref:(list.find(f=>f.phases.fond.reference.trim())||f0).phases.fond.reference,comps:f0.competences.filter(c=>c.on).map(c=>"- "+c.t).join("\n")}}
 function zebra(T){const h=x=>parseInt(x,16),a=T.L.replace("#",""),b=T.M.replace("#","");return [0,2,4].map(k=>Math.round((h(a.substr(k,2))+h(b.substr(k,2)))/2).toString(16).padStart(2,"0")).join("").toUpperCase()}
 /* Groupes de séances consécutives ayant la même séquence (fusion verticale comme dans la fiche de référence) */
@@ -2428,7 +2528,7 @@ async function projetDocx(list){const d=projetData(list),f0=d.f0,T=setDC(f0),TW=
   Lb("Acquisitions attendues",w[0],{vm:"restart"})+H("Connaissances procédurales",w[1])+H("Connaissances conceptuelles",w[2])+H("Connaissances comportementales",w[3]),wc(wp(""),{w:w[0],fill:DC.L,vm:"cont"})+V(d.acq[0],w[1])+V(d.acq[1],w[2])+V(d.acq[2],w[3])]),wgap());
  const w2=pcts(TW,[6,16,78]),G=seqGroups(d.rows),start={};G.forEach(g=>start[g.i]=g);
  const body=d.rows.map((r,i)=>{const ev=i%2===1?{fill:ZB}:{};const sc=start[i]?Lb(start[i].seq,w2[1],{vm:start[i].n>1?"restart":null,ink:"000000"}):wc(wp(""),{w:w2[1],fill:DC.L,vm:"cont"});
-  return wc(wp(wr(r.n,{b:true,sz}),{jc:"center"}),{w:w2[0],v:"center"})+sc+V(r.obj,w2[2],ev)});
+  return wc(wp(wr(r.n,{b:true,sz}),{jc:"center"}),{w:w2[0],v:"center"})+sc+V((r.pr?r.pr+" — ":"")+r.obj,w2[2],ev)});
  b.push(wt(w2,[H("Séances",w2[0],0,(sz+2))+H("Séquence",w2[1],0,(sz+2))+H("Objectifs",w2[2],0,(sz+2))].concat(body,
   [wc(wp(wr("SITUATION DE RÉFÉRENCE",{b:true,color:DC.D,sz})),{w:w2[0]+w2[1],span:2,fill:DC.L,v:"center"})+V(d.ref,w2[2])])));
  return docxPackage(b.join(""),[])}
@@ -2440,7 +2540,7 @@ function projetHTML(list,fsIn){const fs=fsIn||fitProjet(list),d=projetData(list)
  <tr><td style="${l}">Objectif terminal d’intégration (OTI)</td><td style="${c}" colspan="3">${n(f0.oti)}</td></tr><tr><td style="${l}">Objectif terminal du cycle (OTC)</td><td style="${c}" colspan="3">${n(f0.otc)}</td></tr><tr><td style="${l}">Compétences visées</td><td style="${c}" colspan="3">${n(d.comps)}</td></tr>
  <tr><td style="${l}" rowspan="2">Acquisitions attendues</td><td style="${h}">Connaissances procédurales</td><td style="${h}">Connaissances conceptuelles</td><td style="${h}">Connaissances comportementales</td></tr><tr><td style="${c}">${n(d.acq[0])}</td><td style="${c}">${n(d.acq[1])}</td><td style="${c}">${n(d.acq[2])}</td></tr></table>
  <table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:4pt"><col width="6%"><col width="16%"><col width="78%"><tr><td style="${h2}">Séances</td><td style="${h2}">Séquence</td><td style="${h2}">Objectifs</td></tr>
- ${d.rows.map((r,i)=>`<tr><td style="${c};text-align:center;font-weight:bold">${esc(r.n)}</td>${start[i]?`<td style="${l};color:#000" rowspan="${start[i].n}">${n(start[i].seq)}</td>`:""}<td style="${c}${i%2?`;background:${ZB}`:""}">${n(r.obj)}</td></tr>`).join("")}
+ ${d.rows.map((r,i)=>`<tr><td style="${c};text-align:center;font-weight:bold">${esc(r.n)}</td>${start[i]?`<td style="${l};color:#000" rowspan="${start[i].n}">${n(start[i].seq)}</td>`:""}<td style="${c}${i%2?`;background:${ZB}`:""}">${r.pr?`<b style="color:${T.D||"#0f3d5e"}">${esc(r.pr)} — </b>`:""}${n(r.obj)}</td></tr>`).join("")}
  <tr><td style="${l}" colspan="2">SITUATION DE RÉFÉRENCE</td><td style="${c}">${n(d.ref)}</td></tr></table></div>`}
 function cycleHTML(list,noProjet){const pages=(noProjet?[]:[`<div class="pg"><div class="fit">${projetHTML(list)}</div></div>`]).concat(list.map(f=>`<div class="pg"><div class="fit">${ficheHTML(f)}</div></div>`));
  return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Cycle ${esc((list[0]||cur).aps)} ${esc((list[0]||cur).niveau)}</title><style>
