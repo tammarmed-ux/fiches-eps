@@ -734,7 +734,7 @@ const PROFIL={
 const LS_LIST="eps_fiches_v1", LS_CUR="eps_fiche_courante_v1";
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
-const newSit=()=>({titre:"",conditions:"",criteres:"",simplifier:"",complexifier:""});
+const newSit=()=>({titre:"",but:"",conditions:"",criteres:"",simplifier:"",complexifier:""});
 function defPhases(){return{
  ini:{duree:"10’ à 15’",but:"Savoir s’échauffer et échauffer l’autre.",contenu:"Prise en main : explication du déroulement de la séance.\nÉchauffement général.\nÉchauffement spécifique.",consignes:"Adopter un mode de regroupement spécifique à chacun des groupes.",criteres:"Progressivité\nAdaptabilité\nSpécificité\nVariabilité",schema:"",sketch:null},
  fond:{duree:"35’ à 45’",but:"",situations:[newSit()],reference:"",consSecu:"",consOrga:"",critQuant:"",critQual:"",schema:"",sketch:null},
@@ -848,6 +848,7 @@ function renderEditor(){
   ${fd.situations.map((s,i)=>`<div class="sit"><div class="sh"><b>Situation ${i+1}</b><input type="text" data-b="phases.fond.situations.${i}.titre" value="${esc(s.titre)}" placeholder="Titre (facultatif) : Atelier N°1, 3 contre 3…">
    ${i>0?`<button class="mini" data-mv="${i}" title="Monter">↑</button>`:""}<button class="mini del" data-rs="${i}">Supprimer</button></div>
    <div class="sb">
+    <div class="f"><label class="lb">But <span class="hint">finalité : capacité développée + afin de…</span></label>${ta(`phases.fond.situations.${i}.but`,"ex. Développer la vitesse de démarrage afin de maintenir une accélération",2)}</div>
     <div class="f"><label class="lb">Conditions de réalisation</label>${ta(`phases.fond.situations.${i}.conditions`,"Organisation, espace, effectif, matériel…",3)}</div>
     <div class="f"><label class="lb">Critères de réalisation</label>${ta(`phases.fond.situations.${i}.criteres`,"Comment réaliser la tâche…",3)}</div>
     <div class="f"><label class="lb">Variable – pour simplifier</label>${ta(`phases.fond.situations.${i}.simplifier`,"ex. réduire le nombre de joueurs, autoriser un rebond",2)}</div>
@@ -952,6 +953,7 @@ function ficheRaw(f,word,fsIn){const fs=fsIn||11,pd=fs<9?"0.5pt 2pt":"1pt 2.5pt"
  let cont="";
  sits.forEach((s,i)=>{
   if(multi||s.titre.trim())cont+=`<div style="margin-top:${i?5:0}px">${lbl(`<u>${/^(Atelier|Test bilan)\b/.test(s.titre.trim())?esc(s.titre.trim()):`Situation ${i+1}${s.titre.trim()?" : "+esc(s.titre.trim()):""}`}</u>`)}</div>`;
+  if(String(s.but||"").trim())cont+=`<div>${lbl("But :")} ${nl(s.but)}</div>`;
   if(s.conditions.trim())cont+=`<div>${lbl("Conditions de réalisation :")} ${nl(s.conditions)}</div>`;
   if(s.criteres.trim())cont+=`<div>${lbl("Critères de réalisation :")} ${nl(s.criteres)}</div>`;
   if(s.simplifier.trim()||s.complexifier.trim())cont+=`<div>${lbl("Variables :")} ${s.simplifier.trim()?`<i>pour simplifier :</i> ${nl(s.simplifier)}`:""}${s.simplifier.trim()&&s.complexifier.trim()?" &#8226; ":""}${s.complexifier.trim()?`<i>pour complexifier :</i> ${nl(s.complexifier)}`:""}</div>`;
@@ -1174,13 +1176,13 @@ function applyPlan(f,n){if(BANK[f.aps])return genFiche(f,{n});const niv=f.niveau
  const fd=f.phases.fond;
  if(s.type==="app"){
   const butTxt=ucfirst(`${s.verbe} ${s.contenu}`)+(R?` en situation de ${R}`:"")+".";
-  fd.but=butTxt;
+  fd.but=(typeof butList==="function"&&butList(fam,f.aps,tagOf(fam,s.verbe+" "+s.contenu))[0])||butTxt;
   fd.situations=[{titre:R?`${R}`:"Situation d’apprentissage",conditions:T.cond.replace("{R}",R||"atelier"),
     criteres:`Pour ${lcfirst(s.verbe)} ${s.contenu} : ${T.real}`,simplifier:T.simp,complexifier:T.comp}];
   fd.reference=ref;fd.consSecu=T.secu;fd.consOrga=T.orga;
   fd.critQuant=`Au moins ${P.ratio} ${s.unite}.`;fd.critQual=P.qual;
  }else{
-  fd.but=s.type==="diag"?"Prévoir le projet du cycle à partir du niveau de pratique observé par la situation de référence.":"Évaluer le niveau atteint par les élèves par la situation de référence.";
+  fd.but=s.type==="diag"?"Identifier ses ressources et ses besoins afin de construire son projet de progrès.":"Mobiliser les acquis du cycle afin de valider la compétence visée.";
   fd.situations=[{titre:"Situation de référence",conditions:`${ref} On divise le groupe classe en trois rôles (exécutant, observateur, organisateur / arbitre) et on inverse les rôles.`,
     criteres:"Les observateurs remplissent une fiche d’observation individuelle selon les critères du cycle (OTC).",simplifier:"",complexifier:""}];
   fd.reference=ref;fd.consSecu=T.secu;fd.consOrga="Respecter l’ordre de passage et les rôles.";
@@ -1231,7 +1233,7 @@ function checkCoherence(f){
   else add("warn","Séance ← OTC / séquence","L’objectif de séance n’a pas de lien visible avec l’OTC ni avec l’objectif de séquence.")}
  // 4. But de la phase fondamentale ← objectif
  if(!fd.but.trim())add("warn","But ← objectif","Le but de la phase fondamentale est vide.");
- else{const s=shared(fd.but,obj);s.length?add(true,"But ← objectif",`Le but sert l’objectif de la séance (${s.slice(0,4).join(", ")}).`):add("warn","But ← objectif","Le but de la phase fondamentale ne reprend pas l’objectif de la séance.")}
+ else{const r=typeof butOverlap==="function"?butOverlap(fd.but,obj):0;(r<0.4&&!/\d/.test(fd.but))?add(true,"But ← objectif","Le but exprime la finalité de l’objectif (capacité développée), sans reprendre la tâche."):add("warn","But ← objectif","Le but reprend la formulation de l’objectif : exprime plutôt la finalité (Développer… afin de…).")}
  // 5. Situations ← but / objectif
  const sits=fd.situations.filter(s=>(s.conditions+s.criteres).trim());
  if(!sits.length)add("warn","Situations","Aucune situation décrite dans la phase fondamentale.");
@@ -1862,8 +1864,9 @@ const FEAS_W="essais|passages|courses|sauts|lancers|répétitions|tentatives|att
 const FEAS_RE={frac:/(\d+)((?:\s+[^\s\d.;:\n()]+){0,7}?)\s+sur\s+(\d+)\b(?!\s*(?:m\b|cm|kg|min|s\b|%|mètres|secondes))/g,par:/\((\d+)\/(\d+)\)/g,cnt:new RegExp(`\\b(\\d+) (${FEAS_W})\\b`,"g"),rep:/\b(\d+) × (\d+(?:,\d+)?) min\b/g};
 /* Ramène les nombres d’essais d’un texte à ce que permet la durée */
 function feasFix(s,max,niv,D){if(!s)return s;s=String(s);
- s=s.replace(FEAS_RE.frac,(m,a,mid,b)=>{if(+b<=max)return m;const[a2,b2]=feasPair(max,+a/+b,niv);return `${a2}${a2===1?mid.replace(/(\S)s\b/g,"$1"):mid} sur ${b2}`});
- s=s.replace(FEAS_RE.par,(m,a,b)=>{if(+b<=max)return m;const[a2,b2]=feasPair(max,+a/+b,niv);return `(${a2}/${b2})`});
+ const six=["TC","1BAC","2BAC"].includes(niv)&&max>=6,ok=b=>+b<=max&&!(six&&+b===5)&&+b!==10;
+ s=s.replace(FEAS_RE.frac,(m,a,mid,b)=>{if(ok(b))return m;const[a2,b2]=feasPair(max,+a/+b,niv);return `${a2}${a2===1?mid.replace(/(\S)s\b/g,"$1"):mid} sur ${b2}`});
+ s=s.replace(FEAS_RE.par,(m,a,b)=>{if(ok(b))return m;const[a2,b2]=feasPair(max,+a/+b,niv);return `(${a2}/${b2})`});
  s=s.replace(FEAS_RE.cnt,(m,n,w)=>+n>max?`${Math.max(2,max)} ${w}`:m);
  if(D)s=s.replace(FEAS_RE.rep,(m,n,d)=>{const dd=parseFloat(d.replace(",","."));const k=Math.max(1,Math.floor(D/(dd+1)));return +n>k?`${k} × ${d} min`:m});
  return s}
@@ -1878,8 +1881,9 @@ function feasAudit(f){const M=feasModel(f),bad=[],fd=f.phases.fond;
  return bad}
 /* Les conditions de réalisation ne doivent pas réécrire le but */
 const BUT_ORGA="situation référence contre terrain demi-terrain réduit part autre filet groupe groupes équipe espace atelier ateliers tournants parade camarade binôme observateur";
-function butRepeat(f){const fd=f.phases.fond,but=String(fd.but||"").replace(/\.$/,"").trim(),X=stems(BUT_ORGA+" "+((BANK[f.aps]||{}).label||f.aps)),B=new Set([...stems(but)].filter(x=>!X.has(x))),out=[];if(!but)return out;
- fd.situations.forEach((s,i)=>{const c=String(s.conditions||"");let worst=0;
+function butRepeat(f){const o1=butRepeat1(f,f.phases.fond.but,null);const o2=[];f.phases.fond.situations.forEach((x,i)=>{if(x.but)butRepeat1(f,x.but,i).forEach(r=>o2.push(r))});return o1.concat(o2)}
+function butRepeat1(f,BUT,only){const fd=f.phases.fond,but=String(BUT||"").replace(/\.$/,"").trim(),X=stems(BUT_ORGA+" "+((BANK[f.aps]||{}).label||f.aps)),B=new Set([...stems(but)].filter(x=>!X.has(x))),out=[];if(!but)return out;
+ fd.situations.forEach((s,i)=>{if(only!==null&&i!==only)return;const c=String(s.conditions||"");let worst=0;
   c.split(/\s*[;:.]\s+|\.$/).forEach(cl=>{const C=[...stems(cl)].filter(x=>!X.has(x));if(C.length<3||B.size<3)return;const inter=C.filter(x=>B.has(x)).length;
    const r=Math.min(inter/C.length,inter/B.size);if(r>worst)worst=r});
   if(/\bBut\s*:/.test(c)||norm(c).includes(norm(but).slice(0,60))||worst>0.5)out.push(`situation ${i+1} (${Math.round(worst*100)} %)`)});return out}
@@ -1949,6 +1953,95 @@ const CYCLE_APS={"Course d'endurance":endurPlan};
  A("Course d'endurance",[
   {tags:["effort","collectif"],q:"Courir les 2 séries sans s’arrêter à l’allure annoncée.",t:"Course en binômes à allure imposée",c:"Par 2 sur la piste balisée tous les 25 m : courir côte à côte pendant 4 min à l’allure annoncée, en adaptant son effort à ses sensations (parler sans s’essouffler) ; 2 séries, 1 min de marche.",r:"Respiration régulière ; foulée souple ; garder la même allure que son binôme.",s:"Séries de 3 min.",x:"Séries de 5 min."}]);
 })();
+/* ===== But = finalité : capacité développée + afin de + effet final dans l’activité =====
+   Le but ne reprend ni la tâche, ni les conditions, ni le critère de l’objectif (pas de chiffres). */
+const BUT_INI=["Préparer l’organisme à l’effort afin d’éviter les blessures.","Activer les fonctions cardio-respiratoires afin d’aborder l’effort en sécurité.","Mobiliser les articulations et les muscles afin de prévenir les blessures."];
+const BUT_FIN=["Favoriser la récupération afin de revenir à l’état initial.","Faciliter le retour au calme afin de récupérer physiquement et mentalement.","Ramener l’organisme au repos afin de favoriser la récupération."];
+const BUT_EVAL={diag:["Identifier ses ressources et ses besoins afin de construire son projet de progrès.","Repérer ses points forts et ses manques afin de fixer ses priorités du cycle.","Observer et analyser une prestation afin de repérer les points à améliorer.","Développer l’autonomie et la responsabilité afin d’assumer chaque rôle avec sérieux."],
+ som:["Mobiliser les acquis du cycle afin de valider la compétence visée.","Réinvestir ses apprentissages afin de démontrer sa maîtrise de l’activité.","Développer l’autonomie et la responsabilité afin d’assumer chaque rôle avec sérieux.","Observer et apprécier une prestation afin de juger avec objectivité."]};
+const BUT_T={
+ [SC]:{
+  conservation:["Développer la coopération entre partenaires afin de garder la possession collective.","Améliorer la précision des transmissions afin d’éviter les interceptions adverses.","Construire une circulation rapide du jeu afin de déséquilibrer la défense.","Maîtriser la protection de la possession afin de résister à la pression adverse."],
+  demarquage:["Développer la lecture des espaces libres afin d’offrir des solutions au porteur.","Améliorer ses déplacements de non-porteur afin de se rendre disponible.","Construire des appels variés afin de déjouer le marquage adverse.","Développer la vitesse de démarquage afin de créer un décalage."],
+  progression:["Développer la vitesse de progression collective afin d’approcher la cible adverse.","Améliorer l’enchaînement des actions vers l’avant afin de franchir la défense.","Construire l’occupation de la largeur et de la profondeur afin de créer des brèches.","Développer la prise d’initiative vers l’avant afin de déséquilibrer le repli défensif."],
+  tir:["Développer l’efficacité du tir afin de convertir les occasions en points.","Améliorer la prise de décision face à la cible afin de marquer plus souvent.","Maîtriser l’enchaînement course-tir afin de déjouer la défense.","Développer la lucidité devant la cible afin de choisir la meilleure option."],
+  defense:["Développer l’engagement défensif afin de reprendre la possession.","Améliorer le placement entre l’adversaire et la cible afin de protéger son camp.","Construire une défense solidaire afin de gêner la progression adverse.","Développer l’anticipation défensive afin d’intercepter les transmissions."],
+  montee:["Développer la vitesse de transition afin d’attaquer avant le repli adverse.","Améliorer l’enchaînement récupération-attaque afin de surprendre la défense.","Construire une contre-attaque rapide afin de profiter du déséquilibre adverse.","Développer la vitesse de course collective afin de créer le surnombre."],
+  collectif:["Construire un projet de jeu collectif afin de mettre en difficulté la défense.","Développer la complémentarité des rôles afin d’organiser l’attaque.","Améliorer la communication entre partenaires afin de coordonner les actions.","Maîtriser l’application d’un plan de jeu afin de surprendre l’adversaire."]},
+ [RV]:{
+  service:["Développer la précision de la mise en jeu afin de gêner l’adversaire dès l’engagement.","Améliorer la régularité de la frappe afin d’engager l’échange efficacement.","Maîtriser l’orientation de la frappe afin de viser les zones faibles adverses.","Construire une mise en jeu tactique afin de prendre l’avantage dès le début."],
+  reception:["Développer la lecture des trajectoires afin d’intervenir à temps sur la balle.","Améliorer le contrôle du premier contact afin de faciliter la construction.","Maîtriser l’orientation de la manchette afin de servir le passeur.","Développer la stabilité des appuis afin de contrôler les balles difficiles."],
+  passe:["Développer la précision de la touche haute afin de préparer l’attaque.","Améliorer la qualité de la transmission afin de placer l’attaquant en situation favorable.","Maîtriser la hauteur des trajectoires afin de laisser du temps au partenaire.","Construire la relation passeur-attaquant afin de rendre l’attaque plus efficace."],
+  renvoi:["Développer l’intention de rupture afin de gagner le point.","Améliorer l’orientation des frappes afin de viser les espaces libres adverses.","Maîtriser le choix du renvoi afin de déséquilibrer l’adversaire.","Développer la variété des frappes afin de surprendre la défense adverse."],
+  deplacement:["Développer la rapidité des déplacements afin d’intervenir dans de bonnes conditions.","Améliorer l’anticipation des trajectoires afin d’être placé avant le contact.","Construire des appuis équilibrés afin de jouer avec précision.","Améliorer la vitesse de réaction afin de couvrir son espace de jeu."],
+  organisation:["Construire une organisation collective afin d’enchaîner réception, passe et attaque.","Développer la répartition des rôles afin de couvrir tout l’espace de jeu.","Améliorer la communication entre partenaires afin d’éviter les hésitations.","Maîtriser l’enchaînement des trois touches afin de construire le point."],
+  defense:["Développer la vigilance défensive afin de prolonger l’échange.","Améliorer la répartition des zones afin de ne laisser aucun espace libre.","Construire une couverture collective afin de neutraliser l’attaque adverse.","Améliorer la réactivité défensive afin de remettre la balle en jeu."]},
+ [GY]:{
+  elements:["Développer la tonicité et le gainage afin de réaliser des éléments plus difficiles.","Améliorer la qualité d’exécution afin d’enrichir son enchaînement.","Maîtriser les placements segmentaires afin d’exécuter avec sécurité."],
+  rotation:["Développer le repérage dans l’espace afin de maîtriser les rotations.","Améliorer l’orientation du corps en rotation afin de se réceptionner stable.","Construire des repères visuels afin de contrôler les renversements."],
+  equilibre:["Développer le contrôle postural afin de stabiliser les positions.","Améliorer le gainage afin de tenir les équilibres sans déplacement.","Maîtriser l’alignement du corps afin de rester stable en appui."],
+  liaison:["Développer la continuité des actions afin de donner de la fluidité à l’enchaînement.","Maîtriser les transitions entre éléments afin d’éviter les arrêts.","Améliorer le rythme d’exécution afin de rendre la prestation harmonieuse."],
+  projet:["Construire un projet adapté à ses ressources afin de progresser en sécurité.","Développer l’autonomie dans les choix afin de composer un enchaînement cohérent.","Améliorer la connaissance de ses capacités afin d’ajuster la difficulté."],
+  presentation:["Développer l’expression et l’amplitude afin de valoriser sa prestation.","Maîtriser ses émotions en public afin de présenter sans hésitation.","Améliorer la qualité artistique afin de convaincre le jury."],
+  juge:["Développer le regard critique afin d’apprécier une prestation avec justesse.","Améliorer la connaissance du code de pointage afin de juger avec objectivité.","Construire une observation précise afin d’aider son camarade à progresser."]}};
+const BUT_AT_GEN={
+ effort:["Développer la gestion de l’effort afin de rester efficace jusqu’au bout.","Améliorer la résistance à la fatigue afin de limiter la baisse de performance.","Maîtriser la récupération entre les essais afin de garder sa lucidité."],
+ perf:["Mobiliser toutes ses ressources afin de réaliser sa meilleure performance.","Développer la concentration avant l’essai afin de réussir une prestation complète.","Améliorer la régularité des essais afin de stabiliser sa performance."],
+ defi:["Développer l’engagement dans l’effort afin de battre son record.","Améliorer la maîtrise émotionnelle afin de rester performant face à un adversaire.","Construire la confiance en soi afin d’oser se dépasser."],
+ collectif:["Développer l’entraide et l’engagement collectif afin d’améliorer le résultat de l’équipe.","Construire la responsabilité dans les rôles afin de garantir une performance collective fiable.","Améliorer la communication dans le groupe afin de réussir ensemble."],
+ test:["Évaluer sa capacité aérobie afin d’adapter son allure de course.","Identifier ses ressources aérobies afin de construire son projet de course."]};
+const BUT_AT={
+ "Course de vitesse":{technique:["Développer la vitesse de démarrage afin de maintenir une accélération sur une courte distance.","Améliorer la coordination des bras et des jambes afin de courir plus efficacement.","Développer la vitesse de réaction afin de gagner du temps dès le signal."],
+  rythme:["Développer la fréquence gestuelle afin de conserver une vitesse élevée.","Améliorer le relâchement de la foulée afin de prolonger l’accélération.","Construire un rythme de course régulier afin d’éviter les ruptures de vitesse."],
+  effort:["Développer la vitesse maximale afin de la maintenir jusqu’à l’arrivée.","Améliorer la résistance à la vitesse afin de limiter le ralentissement final.","Maîtriser l’effort bref et intense afin de rester relâché en fin de course."],
+  perf:["Améliorer la vitesse maximale afin de réduire son temps de course.","Mobiliser toutes ses ressources afin de réaliser sa meilleure course.","Développer la concentration au départ afin de réussir une course complète."]},
+ "Course de haies":{technique:["Développer un franchissement rasant afin de limiter la perte de vitesse.","Améliorer l’action de la jambe d’attaque afin de franchir sans ralentir.","Maîtriser le retour de la jambe d’esquive afin d’enchaîner la course."],
+  rythme:["Construire un rythme régulier entre les obstacles afin de garder sa vitesse.","Développer la fréquence des appuis afin de relancer vite après l’obstacle.","Améliorer l’attaque de l’obstacle afin de conserver l’équilibre en course."],
+  effort:["Développer la vitesse soutenue afin de garder le rythme jusqu’au dernier obstacle.","Améliorer la résistance à la fatigue afin de franchir sans se désunir."]},
+ "Relais":{technique:["Développer la coordination entre donneur et receveur afin de transmettre sans perte de vitesse.","Améliorer le geste de transmission afin de fiabiliser le passage du témoin.","Construire une communication claire afin de synchroniser les deux coureurs."],
+  rythme:["Construire des repères de départ afin de synchroniser les deux coureurs.","Développer la vitesse de démarrage du receveur afin de transmettre à pleine vitesse.","Améliorer la régularité de l’allure afin de rester lancé dans la zone."],
+  effort:["Développer la vitesse maximale sur sa portion afin de faire gagner du temps à l’équipe.","Améliorer la résistance à la vitesse afin de transmettre sans ralentir."]},
+ "Saut en longueur":{technique:["Développer la puissance d’impulsion afin de projeter le corps vers l’avant et le haut.","Améliorer l’équilibre en suspension afin de préparer une réception efficace.","Maîtriser la réception afin de conserver la distance gagnée."],
+  rythme:["Construire une course d’élan régulière afin de prendre l’appel sans piétiner.","Développer l’accélération en fin d’élan afin de transformer la vitesse en distance.","Améliorer la précision des derniers appuis afin d’impulser efficacement."],
+  effort:["Développer l’explosivité afin de conserver la qualité de l’impulsion.","Améliorer la vitesse d’élan afin de projeter le corps plus loin."]},
+ "Saut en hauteur":{technique:["Développer la détente verticale afin de franchir la barre avec aisance.","Améliorer l’action du genou libre afin de s’élever au-dessus de la barre.","Maîtriser le franchissement en ciseau afin de passer sans faire tomber la barre."],
+  rythme:["Construire un élan courbe régulier afin d’arriver équilibré à l’impulsion.","Développer l’accélération des derniers appuis afin de convertir la vitesse en hauteur.","Améliorer l’orientation de l’élan afin de franchir de profil."],
+  effort:["Développer l’explosivité afin de garder une impulsion efficace à chaque essai.","Améliorer la puissance d’impulsion afin de franchir des barres plus hautes."]},
+ "Lancer de poids":{technique:["Développer la puissance de poussée du bras afin de projeter l’engin loin.","Améliorer l’enchaînement jambes-tronc-bras afin de transmettre toute la force à l’engin.","Maîtriser la tenue de l’engin au cou afin de lancer en sécurité."],
+  rythme:["Construire un élan équilibré afin d’enchaîner sans perte de vitesse.","Développer la coordination de l’élan et de la poussée afin d’augmenter la distance.","Améliorer le placement des appuis afin de pousser dans le bon axe."],
+  effort:["Développer la force explosive afin de garder la qualité de la poussée.","Améliorer le gainage du tronc afin de transmettre la force à l’engin."]},
+ "Course d'endurance":{technique:["Développer l’aisance respiratoire afin de courir longtemps sans s’essouffler.","Améliorer l’économie de la foulée afin de retarder la fatigue.","Construire une respiration régulière afin de soutenir l’effort."],
+  rythme:["Construire des repères d’allure afin de réguler sa vitesse de course.","Développer la perception de son allure afin de courir sans signal extérieur.","Améliorer la régularité de l’allure afin d’économiser son énergie."],
+  effort:["Développer l’endurance aérobie afin de soutenir un effort prolongé.","Améliorer la gestion de l’effort afin de finir la course sans s’arrêter.","Maîtriser l’alternance effort-récupération afin de progresser sans s’épuiser."],
+  perf:["Améliorer sa vitesse maximale aérobie afin de parcourir une plus grande distance.","Mobiliser ses ressources aérobies afin de réaliser sa meilleure performance.","Développer la persévérance dans l’effort afin de dépasser son record."],
+  collectif:["Développer la solidarité dans l’effort afin d’améliorer la performance du groupe.","Construire l’entraide entre coureurs afin de réussir le défi collectif."]}};
+function butList(fam,aps,tag){if(fam===AT){const A=BUT_AT[aps]||{};return [...new Set((A[tag]||[]).concat(BUT_AT_GEN[tag]||[]).concat(...Object.values(A)).concat(...Object.keys(BUT_AT_GEN).filter(k=>k!=="test").map(k=>BUT_AT_GEN[k])))]}
+ const T=BUT_T[fam]||{};return (T[tag]||[]).concat(...Object.keys(T).filter(k=>k!==tag).map(k=>T[k]))}
+function butOverlap(but,txt){const X=new Set(["develo","ameli","constr","maitr","mobil"].map(x=>x.slice(0,5))),B=[...stems(but)].filter(x=>!X.has(x));if(!B.length)return 0;const T=stems(txt);return B.filter(x=>T.has(x)).length/B.length}
+function butSpec(fam,aps,tag){return fam===AT?((BUT_AT[aps]||{})[tag]||[]).concat(((BUT_AT[aps]||{})[tag]?[]:BUT_AT_GEN[tag]||[])):((BUT_T[fam]||{})[tag]||[])}
+function butRot(fam,aps,tag,n){const a=butSpec(fam,aps,tag),m=a.length?n%a.length:0;return a.slice(m).concat(a.slice(0,m)).concat(butList(fam,aps,tag).filter(x=>!a.includes(x)))}
+function butOv(c,avoid){return Math.max(0,...[].concat(avoid).map(t=>butOverlap(c,t)))}
+function butPick(cands,avoid,used,rel){const ok=c=>!used.has(c)&&butOv(c,avoid)<0.4;let L=cands.filter(ok);
+ if(rel&&L.length){const R=stems(rel);L=L.map((c,i)=>({c,i,sc:[...stems(c)].filter(x=>R.has(x)).length})).sort((a,b)=>b.sc-a.sc||a.i-b.i).map(o=>o.c)}
+ return L[0]||cands.find(c=>!used.has(c))||cands[0]||""}
+function gyTagOf(s){const t=norm((s.titre||"")+" "+(s.conditions||""));return /jury|juge|note/.test(t)?"juge":/composition|projet|choisi/.test(t)?"projet":/presente|devant le groupe/.test(t)?"presentation":/enchainement|liaison/.test(t)?"liaison":/equilibre|atr|planche|chandelle|pont/.test(t)?"equilibre":/roulade|rotation|roue|salto|renvers/.test(t)?"rotation":"elements"}
+function assignButs(f,bank,s,o,v){const fam=bank.fam,fd=f.phases.fond,obj=objSentence(f),k=(parseInt(f.seance)||1)+(v||0),used=new Set();
+ f.phases.ini.but=BUT_INI[k%BUT_INI.length];f.phases.fin.but=BUT_FIN[k%BUT_FIN.length];
+ const ev=s.type!=="app";
+ const main=ev?BUT_EVAL[s.type==="diag"?"diag":"som"]:butRot(fam,f.aps,o.tag,k);
+ const rot=(a,n)=>a.length?a.slice(n%a.length).concat(a.slice(0,n%a.length)):a;
+ fd.but=butPick(main,[obj].concat(fd.situations.map(x=>x.conditions)),used);used.add(fd.but);
+ fd.situations.forEach((x,i)=>{const tg=fam===GY?gyTagOf(x):(x._tg||o.tag);
+  const c=ev?(i===0?BUT_EVAL[s.type==="diag"?"diag":"som"].slice(2).concat(butList(fam,f.aps,tg)):BUT_EVAL[s.type==="diag"?"diag":"som"].slice(1)):butRot(fam,f.aps,tg,i+k+1);
+  x.but=butPick(c,[obj,x.conditions],used,fam===AT||fam===GY?(x.titre||"")+" "+(x.criteres||""):"");used.add(x.but);delete x._tg})}
+/* Audit du but : finalité, pas de reprise de l’objectif ni des conditions */
+const BUT_INF=/^(Développer|Améliorer|Construire|Maîtriser|Mobiliser|Préparer|Activer|Favoriser|Faciliter|Ramener|Identifier|Repérer|Observer|Réinvestir|Évaluer|Mobiliser)\b/;
+function butAudit(f){const fd=f.phases.fond,obj=objSentence(f),bad=[];
+ const chk=(b,txt,where)=>{b=String(b||"").trim();if(!b){bad.push(where+": vide");return}const w=b.replace(/[.’']/g," ").split(/\s+/).filter(Boolean).length;
+  if(/\d/.test(b))bad.push(where+": chiffre");if(w<6||w>20)bad.push(where+": "+w+" mots");if(!BUT_INF.test(b))bad.push(where+": pas d’infinitif");
+  const r=butOv(b,txt);if(r>=0.4)bad.push(where+`: reprend l’objectif / les conditions (${Math.round(r*100)} %)`)};
+ chk(fd.but,[obj].concat(fd.situations.map(x=>x.conditions)),"but");chk(f.phases.ini.but,"","but échauffement");chk(f.phases.fin.but,"","but retour au calme");
+ fd.situations.forEach((x,i)=>{if(x.but!==undefined)chk(x.but,[obj,x.conditions],"but situation "+(i+1))});return bad}
 /* ===================== GÉNÉRATEUR AUTOMATIQUE DE FICHE ===================== */
 const AUTO_APS=Object.keys(BANK);
 const FAMT_POUR={[SC]:SC_POUR,[RV]:RV_POUR};
@@ -2007,10 +2100,12 @@ function adaptContenu(c,bank,f){let s=c;
  if(bank.fam===GY&&!s.includes(bank.en))s=s.replace(/gymniques?(?: [A-E](?:(?:, | et )[A-E])*(?![\wÀ-ÿ]))?/,m=>m+" "+bank.en);
  return artFix(s)}
 function femAdj(w){return w.replace(/és$/,"ées").replace(/is$/,"ies").replace(/cts$/,"ctes").replace(/iers$/,"ières").replace(/(ts|ds)$/,m=>m[0]+"es")}
-function adaptUnit(u,bank){if(bank.fam!==AT||!/^essais\b/.test(u))return u;let rest=u.replace(/^essais\s*/,"");
+function timeAps(bank){return bank&&bank.fam===AT&&/course|relais/i.test(bank.label||"")}
+function timeFix(s,bank){return timeAps(bank)?String(s).replace(/au-dessus de sa performance initiale/g,"en dessous de son temps initial").replace(/Améliorer sa performance initiale/g,"Améliorer son temps initial"):s}
+function adaptUnit(u,bank){if(bank.fam!==AT||!/^essais\b/.test(u))return u;u=timeFix(u,bank);let rest=u.replace(/^essais\s*/,"");
  if(bank.fem)rest=rest.replace(/^(\S+)/,w=>/^(au|à|proches|de)$/.test(w)?w:femAdj(w));return (bank.noun+" "+rest).trim()}
 function critPhrase(unit,a,b){const m=unit.match(/^(.*?)\s+réussi(e)?s$/);if(m)return `en réussissant au moins ${a} ${m[1]} sur ${b}`;
- const sp=unit.match(/^(.*?)\s+((?:au-dessus|proches|conformes|au niveau|tenus \\d|tenues \\d|jusqu|en \d|dans la|vers|amenées|dans la zone).*)$/);if(sp)return `avec au moins ${a} ${sp[1]} sur ${b} ${sp[2]}`;return `avec au moins ${a} ${unit} sur ${b}`}
+ const sp=unit.match(/^(.*?)\s+((?:au-dessus|en dessous|proches|conformes|au niveau|tenus \\d|tenues \\d|jusqu|en \d|dans la|vers|amenées|dans la zone).*)$/);if(sp)return `avec au moins ${a} ${sp[1]} sur ${b} ${sp[2]}`;return `avec au moins ${a} ${unit} sur ${b}`}
 /* Objectif (verbe + contenu + intérêt + critère) pour une ligne du plan */
 function objParts(f,s,bank,vIn){const v=vIn!=null?vIn:(f.variant||0),ctx=ctxOf(f,bank,v),fam=bank.fam,apsN=bank.label.replace(/^(le|la|l’) ?/,"");
  if(s.type!=="app"){const ref=refShort(f,bank,ctx),endu=/endurance/i.test(f.aps),diag=s.type==="diag";
@@ -2041,7 +2136,7 @@ function mkSit(tpl,bank,ctx,tag,i,n){const sc=bank.fam===SC||bank.fam===RV;
  let crit=sc?(bank.cues[tag]||""):bank.fam===GY?(bank.cues[i?tpl.tags[0]:tag]||bank.cues[tag]||""):(tpl.r||"");
  if(sc&&i>0)crit=i===n-1?"Réinvestir en match les critères de réalisation de la séance.":"Mêmes critères que la situation 1, en jouant plus vite face à l’opposition"+((bank.cues[tag]||"")?" : "+lcfirst(String(fill(bank.cues[tag],ctx)).split(/ ;|\./)[0])+".":".");
  const ttl=fill(tpl.t,ctx)+(rv&&/\{R/.test(tpl.c)?` (${rv.replace(/ sur terrain réduit/,"")})`:"");
- return{_ref:!!(tpl.g||tpl.p===3),titre:ttl,conditions:fill(tpl.c,ctx),criteres:fill(crit,ctx),simplifier:fill(tpl.s,ctx),complexifier:fill(tpl.x,ctx),_sk:{k:tpl.sk,r:rv},_q:fill(tpl.q||((window.SIT_Q||{})[bank.fam]||{})[bank.fam===GY||bank.fam===AT?(tpl.tags||[tag])[0]:tag]||"",ctx),_o:fill(tpl.o||"",ctx),_sec:fill(tpl.sec||"",ctx)}}
+ return{_ref:!!(tpl.g||tpl.p===3),_tg:(tpl.tags||[])[0]||tag,titre:ttl,conditions:fill(tpl.c,ctx),criteres:fill(crit,ctx),simplifier:fill(tpl.s,ctx),complexifier:fill(tpl.x,ctx),_sk:{k:tpl.sk,r:rv},_q:timeFix(fill(tpl.q||((window.SIT_Q||{})[bank.fam]||{})[bank.fam===GY||bank.fam===AT?(tpl.tags||[tag])[0]:tag]||"",ctx),bank),_o:fill(tpl.o||"",ctx),_sec:fill(tpl.sec||"",ctx)}}
 function refShort(f,bank,ctx){if(bank.fam===AT){const g=bank.sits.find(x=>x.g);return lcfirst(fill(g.c,ctx).split(/ ;|\./)[0])}
  if(bank.fam===GY)return `présentation d’un enchaînement ${bank.en} ${ctx.compo} devant le groupe classe`;return lcfirst(refFor(f,bank,ctx).replace(/\.$/,""))}
 function ensureComps(f,fam,type){const op=OP[f.niveau];if(!op)return[];
@@ -2078,13 +2173,14 @@ function genFiche(f,opt){opt=opt||{};const bank=BANK[f.aps];if(!bank||!OP[f.nive
  const FM=feasModel(f,sits.length);if(s.type==="app"&&!o.fixed){const[a2,b2]=feasPair(FM.maxObj,(+o.a)/(+o.b),niv);o.a=a2;o.b=b2;o.critere=critPhrase(o.unit,a2,b2);f.objCritere=o.critere}
  const secu=[bank.regle,T.secu.split(" ; ")[0].replace(/\.?$/,".")].concat(s.type==="app"?xs.filter(Boolean).slice(0,1):[]).concat(cats.filter(c=>c.secu).map(c=>c.secu));fd.consSecu=[...new Set(secu)].join(" ");
  const orga=(s.type!=="app"?["Respecter l’ordre de passage et le rôle de chaque groupe."]:fam===AT&&window.AT_ATELIERS?[AT_ATELIERS]:[T.orga.split(" ; ")[0].replace(/\.?$/,".")]).concat(s.type==="app"?xo.filter(Boolean).slice(0,2):[]).concat(cats.filter(c=>c.orga).map(c=>c.orga)).slice(0,3);fd.consOrga=[...new Set(orga)].join("\n");
- if(s.type==="app"){const q=[o.fixed?"Chaque élève atteint l’objectif "+o.critere+".":`Au moins ${o.a} ${o.unit} sur ${o.b} (${o.a}/${o.b}).`];const seenQ=new Set();xq.slice(0,2).forEach((t,i)=>{if(t&&!seenQ.has(t)){seenQ.add(t);q.push(`S${i+1} : ${t}`)}});cats.forEach(c=>{if(c.quant&&c.quant[fam])q.push(fill(c.quant[fam],ctx))});fd.critQuant=[...new Set(q)].slice(0,3).join("\n")}
+ if(s.type==="app"){const q=[o.fixed?"Chaque élève atteint l’objectif "+o.critere+".":(/^avec au moins/.test(critPhrase(o.unit,o.a,o.b))?critPhrase(o.unit,o.a,o.b).replace(/^avec au moins/,"Au moins"):`Au moins ${o.a} ${o.unit} sur ${o.b}`)+` (${o.a}/${o.b}).`];const seenQ=new Set();xq.slice(0,2).forEach((t,i)=>{if(t&&!seenQ.has(t)){seenQ.add(t);q.push(`S${i+1} : ${t}`)}});cats.forEach(c=>{if(c.quant&&c.quant[fam])q.push(fill(c.quant[fam],ctx))});fd.critQuant=[...new Set(q)].slice(0,3).join("\n")}
  else fd.critQuant=s.type==="diag"?"Tous les élèves (100 %) passent le test et sont observés.":"Tous les élèves (100 %) sont évalués selon la grille.";
  const base=s.type==="app"?P.qual.split("\n"):[s.type==="diag"?"Fiches d’observation complètes et exploitables.":"Respect des critères de la grille d’évaluation."];
  const ql=[base[0]].concat(cats.slice(0,2).map(c=>c.qual),base.slice(1));fd.critQual=[...new Set(ql)].slice(0,3).join("\n");
  if(fam===GY&&typeof gyApply==="function")gyApply(f,s,o,bank,ctx,fd,cats,v,n);
  {const M=feasModel(f,fd.situations.length),fx=(t,i)=>feasFix(t,i?M.maxSit:M.maxObj,niv,i?M.Dsit:M.Deff);fd.critQuant=fd.critQuant.split("\n").map((l,i)=>fx(l,i)).join("\n");
   fd.situations.forEach(x=>{x.conditions=fx(x.conditions,1);x.criteres=fx(x.criteres,1);x.simplifier=fx(x.simplifier,1);x.complexifier=fx(x.complexifier,1)});fd.consOrga=fx(fd.consOrga,1);fd.consSecu=fx(fd.consSecu,1)}
+ if(typeof assignButs==="function")assignButs(f,bank,s,o,v);
  try{if(fd._gyPanels&&fd._gyPanels.length){fd.schema=composeSchema(fd._gyPanels,{legend:"gy"});fd.schemaH=fd._gyPanels.length*354-6+70}else{fd.schema=composeSchema(sits.map((x,i)=>({label:`Situation ${i+1} : ${x.titre}`,sk:buildSk(f,bank,sks[i],ctx,i)})),{legend:fam===SC||fam===RV});fd.schemaH=sits.length*354-6+(fam===SC||fam===RV?70:0)}delete fd._gyPanels;fd.sketch=null;
   ini.schema=composeSchema([{label:"Échauffement",sk:buildSk(f,bank,{k:"ini"},ctx,0)}]);ini.sketch=null;ini.schemaH=348;fin.schemaH=348;
   fin.schema=composeSchema([{label:"Retour au calme – bilan",sk:{bg:"vierge",items:fieldCircle()}}]);fin.sketch=null}catch(e){console.warn(e)}
@@ -2285,6 +2381,7 @@ async function ficheDocx(f){const TH=setDC(f),FS=fitFs(f),sz=Math.round(FS*2),TW
  const imW=Math.min(w4[6]/567*0.92,Math.min(130,Math.max(78,130*FS/10.5))*2.54/96);
  let cont="";const sits=fd.situations.filter(s=>Object.values(s).some(v=>String(v).trim()));
  sits.forEach((s,i)=>{if(sits.length>1||s.titre.trim())cont+=wp(wr(/^(Atelier|Test bilan)\b/.test(s.titre.trim())?s.titre.trim():`Situation ${i+1}${s.titre.trim()?" : "+s.titre.trim():""}`,{b:true,u:true,color:DC.D,sz}),{before:i?60:0});
+  if(String(s.but||"").trim())cont+=wp(lb("But : ")+t(String(s.but).trim()));
   if(s.conditions.trim())cont+=wp(lb("Conditions de réalisation : ")+t(s.conditions.trim()));
   if(s.criteres.trim())cont+=wp(lb("Critères de réalisation : ")+t(s.criteres.trim()));
   if(s.simplifier.trim()||s.complexifier.trim())cont+=wp(lb("Variables : ")+(s.simplifier.trim()?t("pour simplifier : ",{i:true})+t(s.simplifier.trim()):"")+(s.simplifier.trim()&&s.complexifier.trim()?t(" • "):"")+(s.complexifier.trim()?t("pour complexifier : ",{i:true})+t(s.complexifier.trim()):""))});
