@@ -931,7 +931,7 @@ function ficheHTML(f,word,fsIn){let h=fixWidths(ficheRaw(f,word,fsIn||fitFs(f)))
  if(word)h=h.replace(/<div style="margin-top:\d+px">/g,"<div>").replace(/(<td[^>]*>)([\s\S]*?)(<\/td>)/g,(m,a,b,c)=>a+"<div>"+(b||"&nbsp;")+"</div>"+c);
  return h}
 function ficheLen(f){const P=f.phases;return JSON.stringify([P.ini.contenu,P.fond.situations,P.fond.consSecu,P.fond.consOrga,P.fond.critQuant,P.fond.critQual,P.fin.contenu,f.otc,f.oti]).length}
-function ficheRaw(f,word,fsIn){const fs=fsIn||11,pd=fs<9?"0.5pt 2pt":"1pt 2.5pt",imgW=Math.round(Math.min(130,Math.max(78,130*fs/10.5)));
+function ficheRaw(f,word,fsIn){const fs=fsIn||11,pd=fs<9?"0.5pt 2pt":"1pt 2.5pt",gyW=f.famille===GY,imgW=Math.round(Math.min(gyW?186:212,Math.max(gyW?150:168,(gyW?186:212)*fs/9.5)));
  const T=pal(f.aps,f.famille),D=T.ink,L=T.L,M=T.M,LN=T.line;
  const tb=`width:100%;border-collapse:collapse;table-layout:fixed;font-family:Calibri,Carlito,Arial,sans-serif;font-size:${fs}pt;line-height:1.06;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;`;
  const bd=`border:1px solid ${LN};`;
@@ -946,7 +946,7 @@ function ficheRaw(f,word,fsIn){const fs=fsIn||11,pd=fs<9?"0.5pt 2pt":"1pt 2.5pt"
  const P=f.phases,fond=P.fond;
  const comps=f.competences.filter(c=>c.on&&c.t.trim()).map(c=>"- "+esc(c.t.trim())).join("<br>");
  /* Schéma composé (480 px de large) découpé en vignettes : la ligne peut continuer sur la page suivante à l’impression */
- const img=p=>{if(!p.schema)return"";if(!word&&p.schemaH>434&&/^data:image\/jpeg/.test(p.schema)){let o="";for(let y=0;y<p.schemaH;y+=354){const h=Math.min(354,p.schemaH-y);
+ const img=p=>{if(!p.schema)return"";const st=p.schemaStep||354;if(!word&&p.schemaH>st+80&&/^data:image\/jpeg/.test(p.schema)){let o="";for(let y=0;y<p.schemaH;y+=st){const h=Math.min(st,p.schemaH-y);
    o+=`<div style="width:100%;max-width:${imgW}px;margin:0 auto 2px;overflow:hidden;aspect-ratio:480/${h}"><img src="${p.schema}" style="width:100%;height:auto;display:block;margin-top:-${(y/480*100).toFixed(3)}%"></div>`}return o}
   return `<img src="${p.schema}" width="${word?110:imgW}" style="width:100%;max-width:${imgW}px;height:auto;aspect-ratio:auto 480/${p.schemaH||348};display:block;margin:0 auto">`};
  const sits=fond.situations.filter(s=>Object.values(s).some(v=>String(v).trim()));
@@ -981,7 +981,7 @@ function ficheRaw(f,word,fsIn){const fs=fsIn||11,pd=fs<9?"0.5pt 2pt":"1pt 2.5pt"
 <tr><td style="${lab}">Compétences visées</td><td style="${td}">${comps}</td></tr>
 <tr><td style="${lab}">Objectif de la séquence</td><td style="${td}">${nl(f.objSeq)}</td></tr>
 <tr><td style="${lab}">Objectif de la séance</td><td style="${td}font-weight:bold">${esc(objSentence(f))}</td></tr></table>${gap}
-<table style="${tb}"><col width="9%"><col width="5%"><col width="10%"><col width="39%"><col width="12.5%"><col width="12.5%"><col width="12%">
+<table style="${tb}">${gyW?'<col width="7%"><col width="4.5%"><col width="9%"><col width="38.5%"><col width="11.5%"><col width="11.5%"><col width="18%">':'<col width="7%"><col width="4.5%"><col width="9%"><col width="36%"><col width="11.5%"><col width="11.5%"><col width="20.5%">'}
 <tr>${["Phase","Durée","But","Contenu (situations, conditions et critères de réalisation, variables)","Consignes","Critères de réussite","Schématisation"].map(x=>`<td style="${th}font-size:${fs+0.5}pt">${x}</td>`).join("")}</tr>
 ${row("Initiale",P.ini,nl(P.ini.contenu),nl(P.ini.consignes),nl(P.ini.criteres),word?0:60)}
 ${row("Fondamentale",fond,cont,cons,crit,word?0:150)}
@@ -2280,9 +2280,7 @@ function genFiche(f,opt){opt=opt||{};const bank=BANK[f.aps];if(!bank||!OP[f.nive
   fd.situations.forEach(x=>{x.conditions=fx(x.conditions,1);x.criteres=fx(x.criteres,1);x.simplifier=fx(x.simplifier,1);x.complexifier=fx(x.complexifier,1)});fd.consOrga=fx(fd.consOrga,1);fd.consSecu=fx(fd.consSecu,1)}
  if(typeof assignPrinc==="function")assignPrinc(f,bank,s);
  if(typeof assignButs==="function")assignButs(f,bank,s,o,v);
- try{if(fd._gyPanels&&fd._gyPanels.length){fd.schema=composeSchema(fd._gyPanels,{legend:"gy"});fd.schemaH=fd._gyPanels.length*354-6+70}else{fd.schema=composeSchema(sits.map((x,i)=>({label:`Situation ${i+1} : ${x.titre}`,sk:buildSk(f,bank,sks[i],ctx,i)})),{legend:fam===SC||fam===RV});fd.schemaH=sits.length*354-6+(fam===SC||fam===RV?70:0)}delete fd._gyPanels;fd.sketch=null;
-  ini.schema=composeSchema([{label:"Échauffement",sk:buildSk(f,bank,{k:"ini"},ctx,0)}]);ini.sketch=null;ini.schemaH=348;fin.schemaH=348;
-  fin.schema=composeSchema([{label:"Retour au calme – bilan",sk:{bg:"vierge",items:fieldCircle()}}]);fin.sketch=null}catch(e){console.warn(e)}
+ delete fd._gyPanels;try{schemaApply(f,bank)}catch(e){console.warn(e)}
  f.autoGen=true;return true}
 /* ===================== SCHÉMAS AUTOMATIQUES ===================== */
 const BG_EXTRA={
@@ -2374,6 +2372,479 @@ function drawLegend(x,ox,oy,w,h){x.save();x.fillStyle="#fff";x.fillRect(ox,oy,w,
  x.fillStyle="#fff";x.strokeStyle="#222";x.lineWidth=1.5;x.beginPath();x.arc(ox+300,r1,7,0,7);x.fill();x.stroke();x.fillStyle="#f5a623";x.beginPath();x.arc(ox+300,r1,3,0,7);x.fill();tx("Ballon",ox+312,r1);
  x.fillStyle="#ff7f0e";x.strokeStyle="#7a3b00";x.lineWidth=1;x.beginPath();x.moveTo(ox+390,r1-9);x.lineTo(ox+397,r1+6);x.lineTo(ox+383,r1+6);x.closePath();x.fill();x.stroke();tx("Plot",ox+404,r1);
  ar(ox+20,r2+2,ox+70,r2+2,"#111",false);tx("Trajet du ballon (passe, tir)",ox+78,r2+2);ar(ox+272,r2+2,ox+322,r2+2,"#7b1fa2",true);tx("Déplacement",ox+330,r2+2);x.restore()}
+/* ===================== SCHÉMAS DÉRIVÉS DU TEXTE DE CHAQUE SITUATION =====================
+   Chaque schéma est construit à partir des conditions de réalisation de SA situation :
+   distances, effectifs, rôles, matériel et actions lus dans le texte, puis dessinés et étiquetés. */
+const SC_W=480;
+const SR={att:["A","#1f5fbf","Attaquant"],def:["D","#d1342f","Défenseur"],gb:["G","#2e7d32","Gardien de but"],pas:["P","#0b7a8a","Passeur"],rec:["R","#3d8bfd","Receveur"],
+ ex:["E","#1f5fbf","Élève"],grp:["A","#8fb3e8","Joueurs en attente"],obs:["O","#7b1fa2","Observateur"],jug:["J","#e67e00","Juge"],chr:["C","#8d5524","Chronométreur"],sta:["S","#37474f","Starter"],
+ mes:["M","#00897b","Mesureur"],sec:["Se","#6d4c41","Secrétaire"],par:["P","#d1342f","Pareur"],ens:["Ens","#111","Enseignant"],arb:["Ar","#455a64","Arbitre"],lan:["L","#0b7a8a","Lanceur"],
+ cpt:["Co","#00897b","Compteur"],rem:["Re","#6d4c41","Remonteur de barre"],rat:["Ra","#795548","Ratisseur"],org:["Or","#546e7a","Organisateur"],aid:["T","#9e9d24","Élève qui tient le matériel"]};
+const SA={run:["Course / déplacement","#7b1fa2",[8,5],2.6],ball:["Passe / tir","#111",null,2.6],drib:["Dribble / conduite","#111",null,2],thr:["Trajectoire de l’engin","#c62828",null,2.8],
+ jmp:["Trajectoire du saut","#c62828",[6,4],2.6],rot:["Rotation des groupes / rôles","#2e7d32",null,4],back:["Retour / repli","#7b1fa2",[2,5],2.6],elem:["Élément gymnique","#c62828",null,2.8]};
+const SM={plot:"Plot",cerceau:"Cerceau",haie:"Haie",latte:"Latte",elastique:"Élastique",temoin:"Témoin",ballon:"Ballon",poids:"Poids",medball:"Médecine-ball",tapis:"Tapis",caisson:"Caisson",
+ tremplin:"Tremplin",poutre:"Poutre basse",barrefixe:"Barre fixe",barre:"Barre",banc:"Banc",plinth:"Plinth",espalier:"Espalier",mur:"Mur",filet:"Filet",but:"But",panier:"Panier",fosse:"Fosse de sable",
+ planche:"Planche d’appel",cible:"Zone cible",fil:"Fil",cercle:"Cercle de lancer",secteur:"Secteur de chute",planincl:"Plan incliné",ligne:"Ligne tracée"};
+const NUMW={un:1,une:1,"un seul":1,deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8};
+const sNum=s=>/^\d+$/.test(s)?+s:(NUMW[String(s).toLowerCase()]||0);
+/* ---------- lecture du texte ---------- */
+function schParse(t,aps){t=String(t||"").replace(/\u00a0/g," ");const L=t.toLowerCase(),P={t,L,aps:aps||""};let m;
+ P.dist=[];const re=/(\d+(?:,\d+)?)\s?(cm|m)(?![a-zà-ÿ²])/g;while((m=re.exec(t)))P.dist.push(m[1]+" "+m[2]);P.dist=[...new Set(P.dist)];
+ P.gf=(m=t.match(/(\d+(?:,\d+)?)\s?(c?m)\s*\(?G\)?\s*\/\s*(\d+(?:,\d+)?)\s?(c?m)\s*\(?F\)?/))?{g:m[1]+" "+m[2],f:m[3]+" "+m[4],gv:+m[1].replace(",","."),fv:+m[3].replace(",",".")}:null;
+ P.vs=(m=t.match(/(\d+)\s*contre\s*(\d+)/))?[+m[1],+m[2]]:null;
+ m=L.match(/(?:groupes|équipes|colonnes|vagues|séries) de (\d+)(?! ?(?:m\b|min|s\b|haies))|\bpar (\d+)\b(?! ?(?:m\b|min|s\b|cm))|(?:^|[^a-zà-ÿ])(deux|trois|quatre|cinq|six) élèves|par binômes|travail en binôme/);
+ P.unit=m?(m[1]?+m[1]:m[2]?+m[2]:m[3]?sNum(m[3]):2):0;
+ P.groups=(m=L.match(/(\d+|deux|trois|quatre|cinq) groupes/))?sNum(m[1]):0;
+ P.def=(m=L.match(/(\d+|deux|trois|un seul|un) défenseurs?/))?sNum(m[1]):0;
+ P.lanes=(m=L.match(/(\d+|deux|trois|quatre|cinq|six) couloirs/))?sNum(m[1]):0;
+ P.haies=(m=L.match(/(\d+) haies/))?+m[1]:0;
+ P.rep=(m=L.match(/(\d+) (lancers mesurés|sauts mesurés|lancers|passages|sauts|essais mesurés|essais|transmissions|balles|services|courses|élans)/))?m[0]:"";
+ P.dur=(m=t.match(/(\d+) min\b/))?m[1]+" min":"";
+ const R=[[/défenseur/,"def"],[/attaquant|porteur/,"att"],[/(?<!sans )gardien/,"gb"],[/passeur fixe|passeur \(au filet\)|joueur près du filet/,"pas"],[/receveur|réceptionn/,"rec"],[/\bjuges\b|\bjuge (?!l’)|jury/,"jug"],[/chronométreur/,"chr"],
+  [/starter/,"sta"],[/mesureur|\bmesure\b/,"mes"],[/secrétaire/,"sec"],[/observateur|observe\b/,"obs"],[/pareur|parade/,"par"],[/compteur|compte les|l’autre compte/,"cpt"],[/remonteur/,"rem"],[/ratisseur/,"rat"],
+  [/organisateur/,"org"],[/arbitre/,"arb"],[/enseignant/,"ens"],[/tenu par deux élèves|tenu par deux|tenu au-dessus/,"aid"],[/lanceur|l’un lance|a lance/,"lan"]];
+ P.roles=R.filter(([r])=>r.test(L)).map(x=>x[1]);
+ const sc=/Handball|Basketball|Football/.test(aps),rv=/Volley/.test(aps),ga=/Gymnastique/.test(aps);
+ if(!sc&&!rv)P.roles=P.roles.filter(r=>!["def","att","pas"].includes(r)||ga&&false);
+ if(sc||rv)P.roles=P.roles.filter(r=>r!=="lan"||rv);
+ if(!rv)P.roles=P.roles.filter(r=>r!=="lan");if(!sc&&!rv&&!/Relais/.test(aps))P.roles=P.roles.filter(r=>r!=="rec");
+ const M=[[/\bplots?\b/,"plot"],[/cerceau/,"cerceau"],[/\bhaies?\b/,"haie"],[/\blattes?\b/,"latte"],[/élastique/,"elastique"],[/témoin/,"temoin"],[/médecine-ball/,"medball"],
+  [/tapis/,"tapis"],[/caisson/,"caisson"],[/tremplin/,"tremplin"],[/poutre/,"poutre"],[/barre fixe/,"barrefixe"],[/\bbanc\b/,"banc"],[/plinth/,"plinth"],[/espalier/,"espalier"],[/\bmur\b/,"mur"],
+  [/filet/,"filet"],[/panier/,"panier"],[/fosse|sable|sautoir/,"fosse"],[/\bfil\b/,"fil"],[/ballons?|\bballe\b/,"ballon"],[/plan incliné/,"planincl"],[/ligne tracée/,"ligne"]];
+ P.mat=M.filter(([r])=>r.test(L)).map(x=>x[1]);
+ if(/poids/.test(aps)&&(/\bpoids\b/.test(L)||/lancers?|concours/.test(L)&&!/médecine-ball/.test(L)))P.mat.push("poids");
+ if(/hauteur/.test(aps)&&/\bbarre\b/.test(L)&&!/barre fixe/.test(L))P.mat.push("barre");
+ if(/longueur/.test(aps)&&/planche/.test(L))P.mat.push("planche");
+ if(/poids/.test(aps)&&/cercle/.test(L))P.mat.push("cercle");
+ if(/poids/.test(aps)&&/secteur/.test(L))P.mat.push("secteur");
+ if(sc&&/\bbuts?\b|mini-but|cible/.test(L)&&!/panier/.test(L))P.mat.push(/Basket/.test(aps)?"panier":"but");
+ if(!sc&&/cible|zone matérialisée/.test(L))P.mat.push("cible");
+ if(ga)P.mat=P.mat.filter(x=>x!=="ballon");
+ P.mat=[...new Set(P.mat)];return P}
+/* ---------- primitives de dessin ---------- */
+function sNew(title,H){const cv=document.createElement("canvas");cv.width=SC_W;cv.height=H||320;const c=cv.getContext("2d");c.fillStyle="#fff";c.fillRect(0,0,SC_W,cv.height);c.lineCap="round";c.lineJoin="round";
+ return{title,cv,c,H:cv.height,labels:[],roles:{},mat:{},arr:{},counts:{},unit:0,layout:"",fb:[],pos:[]}}
+function sTx(S,x,y,t,o){o=o||{};const c=S.c;c.save();let fz=Math.round((o.s||15)*1.12);const al=o.a||"center",mx=o.max||(al==="left"?474-x:al==="right"?x-6:2*Math.min(x,480-x)-8);t=String(t);
+ const fnt=()=>`${o.n?"":"bold "}${fz}px Arial,sans-serif`;c.font=fnt();while(c.measureText(t).width>mx&&fz>11){fz--;c.font=fnt()}while(c.measureText(t).width>mx&&t.length>4)t=t.slice(0,-2)+"…";o=Object.assign({},o,{s:fz});c.textAlign=al;c.textBaseline="middle";
+ if(o.box){const w=c.measureText(t).width+8,h=(o.s||15)+5,x0=o.a==="left"?x-4:o.a==="right"?x-w+4:x-w/2;c.fillStyle=o.box;c.fillRect(x0,y-h/2,w,h);c.strokeStyle=o.bc||"#555";c.lineWidth=1;c.strokeRect(x0,y-h/2,w,h)}
+ else{c.lineWidth=4;c.strokeStyle="rgba(255,255,255,.95)";c.strokeText(t,x,y)}c.fillStyle=o.col||"#111";c.fillText(t,x,y);c.restore();S.labels.push(t)}
+function sLine(S,pts,col,w,dash){const c=S.c;c.save();c.strokeStyle=col;c.lineWidth=w||2;c.setLineDash(dash||[]);c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();c.restore()}
+function sHead(c,x1,y1,x2,y2,col,l){const a=Math.atan2(y2-y1,x2-x1);l=l||11;c.fillStyle=col;c.beginPath();c.moveTo(x2,y2);c.lineTo(x2-l*Math.cos(a-.42),y2-l*Math.sin(a-.42));c.lineTo(x2-l*Math.cos(a+.42),y2-l*Math.sin(a+.42));c.closePath();c.fill()}
+function sDim(S,x1,y1,x2,y2,t,o){o=o||{};const c=S.c,a=Math.atan2(y2-y1,x2-x1),nx=-Math.sin(a)*6,ny=Math.cos(a)*6;c.save();c.strokeStyle=o.col||"#222";c.lineWidth=1.6;c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);
+ c.moveTo(x1+nx,y1+ny);c.lineTo(x1-nx,y1-ny);c.moveTo(x2+nx,y2+ny);c.lineTo(x2-nx,y2-ny);c.stroke();sHead(c,x2-Math.cos(a)*1,y2-Math.sin(a)*1,x2,y2,o.col||"#222",8);sHead(c,x1+Math.cos(a)*1,y1+Math.sin(a)*1,x1,y1,o.col||"#222",8);c.restore();
+ const ox=o.ox!=null?o.ox:(Math.abs(a)<0.8||Math.abs(a)>2.3?0:-10),oy=o.oy!=null?o.oy:(Math.abs(a)<0.8||Math.abs(a)>2.3?-11:0);
+ sTx(S,(x1+x2)/2+ox,(y1+y2)/2+oy,t,{s:o.s||15,a:o.a,box:o.box||"#fffde7",bc:"#999",col:o.tc})}
+function sAr(S,k,pts,o){o=o||{};const A=SA[k],c=S.c;S.arr[k]=o.lab||S.arr[k]||A[0];c.save();c.strokeStyle=A[1];c.lineWidth=A[3];c.setLineDash(A[2]||[]);c.beginPath();
+ let p=pts;if(o.curve&&pts.length===3){c.moveTo(p[0][0],p[0][1]);c.quadraticCurveTo(p[1][0],p[1][1],p[2][0],p[2][1]);}
+ else if(k==="drib"){const[a,b]=pts,L=Math.hypot(b[0]-a[0],b[1]-a[1]),ux=(b[0]-a[0])/L,uy=(b[1]-a[1])/L;c.moveTo(a[0],a[1]);for(let d=0;d<=L-10;d+=3){const w=Math.sin(d/6)*5;c.lineTo(a[0]+ux*d-uy*w,a[1]+uy*d+ux*w)}c.lineTo(b[0],b[1]);p=[[b[0]-ux*10,b[1]-uy*10],b]}
+ else pts.forEach((q,i)=>i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]));c.stroke();c.setLineDash([]);
+ const n=p.length,from=o.curve&&pts.length===3?p[1]:p[n-2],to=p[n-1];if(!o.noHead)sHead(c,from[0],from[1],to[0],to[1],A[1],k==="rot"?14:11);
+ if(o.both){const q=p[1],r=p[0];sHead(c,q[0],q[1],r[0],r[1],A[1],k==="rot"?14:11)}c.restore();if(o.t)sTx(S,o.tx,o.ty,o.t,{s:o.s||14,col:o.tcol||A[1]})}
+function sP(S,x,y,role,o){o=o||{};const R=SR[role];if(!S.roles[role])S.roles[role]=o.lab||R[2];S.counts[role]=(S.counts[role]||0)+1;if(o.u)S.unit++;S.pos.push([x,y]);
+ const c=S.c,t=o.n!=null&&o.n!==""?(R[0].length>1?R[0]:R[0]+o.n):R[0];c.save();c.fillStyle=R[1];c.strokeStyle="#fff";c.lineWidth=2.2;c.beginPath();
+ if(role==="ens"){c.rect(x-14,y-11,28,22)}else c.arc(x,y,12.5,0,7);c.fill();c.stroke();c.fillStyle="#fff";c.font=`bold ${t.length>2?10:t.length>1?11.5:13}px Arial,sans-serif`;c.textAlign="center";c.textBaseline="middle";c.fillText(t,x,y+.5);c.restore()}
+const SMD={
+ plot(c,x,y,s){s=s||1;c.fillStyle="#ff7f0e";c.strokeStyle="#7a3b00";c.lineWidth=1;c.beginPath();c.moveTo(x,y-9*s);c.lineTo(x+7*s,y+6*s);c.lineTo(x-7*s,y+6*s);c.closePath();c.fill();c.stroke()},
+ cerceau(c,x,y,s){s=s||1;c.strokeStyle="#e53935";c.lineWidth=3;c.beginPath();c.arc(x,y,11*s,0,7);c.stroke()},
+ haie(c,x,y,s,h){h=h||30;c.strokeStyle="#111";c.lineWidth=7;c.beginPath();c.moveTo(x,y-h/2);c.lineTo(x,y+h/2);c.stroke();c.strokeStyle="#fff";c.lineWidth=4;c.setLineDash([5,5]);c.beginPath();c.moveTo(x,y-h/2);c.lineTo(x,y+h/2);c.stroke();c.setLineDash([])},
+ latte(c,x,y,s,h){h=h||26;c.strokeStyle="#fdd835";c.lineWidth=4;c.beginPath();c.moveTo(x,y-h/2);c.lineTo(x,y+h/2);c.stroke()},
+ elastique(c,x,y,s,x2,y2){if(x2==null){x2=x+12;y2=y;x-=12}c.strokeStyle="#fbc02d";c.lineWidth=4;c.setLineDash([7,4]);c.beginPath();c.moveTo(x,y);c.lineTo(x2,y2);c.stroke();c.setLineDash([]);c.fillStyle="#333";c.fillRect(x-4,y-4,8,8);c.fillRect(x2-4,y2-4,8,8)},
+ barre(c,x,y,s,x2,y2){if(x2==null){x2=x+12;y2=y;x-=12}c.strokeStyle="#111";c.lineWidth=6;c.beginPath();c.moveTo(x,y);c.lineTo(x2,y2);c.stroke();c.strokeStyle="#ffeb3b";c.lineWidth=4;c.setLineDash([6,6]);c.beginPath();c.moveTo(x,y);c.lineTo(x2,y2);c.stroke();c.setLineDash([]);c.fillStyle="#333";c.fillRect(x-5,y-5,10,10);c.fillRect(x2-5,y2-5,10,10)},
+ temoin(c,x,y){c.save();c.translate(x,y);c.rotate(-.5);c.fillStyle="#e53935";c.fillRect(-8,-3,16,6);c.strokeStyle="#7f0000";c.lineWidth=1;c.strokeRect(-8,-3,16,6);c.restore()},
+ ballon(c,x,y,s){s=s||1;c.fillStyle="#fff";c.strokeStyle="#222";c.lineWidth=1.5;c.beginPath();c.arc(x,y,7*s,0,7);c.fill();c.stroke();c.fillStyle="#f5a623";c.beginPath();c.arc(x,y,3*s,0,7);c.fill()},
+ poids(c,x,y,s){s=s||1;c.fillStyle="#424242";c.strokeStyle="#000";c.lineWidth=1;c.beginPath();c.arc(x,y,7*s,0,7);c.fill();c.stroke();c.fillStyle="#bdbdbd";c.beginPath();c.arc(x-2*s,y-2*s,2*s,0,7);c.fill()},
+ medball(c,x,y,s){s=s||1;c.fillStyle="#8d6e63";c.strokeStyle="#3e2723";c.lineWidth=1.5;c.beginPath();c.arc(x,y,8*s,0,7);c.fill();c.stroke()},
+ tapis(c,x,y,s,w,h,col){w=w||24;h=h||14;if(s===0){c.fillStyle=col||"#3d7cc9";c.fillRect(x,y,w,h);c.strokeStyle="#1d4f8a";c.lineWidth=2;c.strokeRect(x,y,w,h)}else{c.fillStyle="#3d7cc9";c.fillRect(x-12,y-7,24,14);c.strokeStyle="#1d4f8a";c.lineWidth=1.5;c.strokeRect(x-12,y-7,24,14)}},
+ caisson(c,x,y,s,w,h){w=w||24;h=h||16;const x0=s===0?x:x-12,y0=s===0?y:y-8;c.fillStyle="#b08b3a";c.fillRect(x0,y0,w,h);c.strokeStyle="#6d4c1e";c.lineWidth=1.5;c.strokeRect(x0,y0,w,h);for(let k=y0+h/4;k<y0+h;k+=h/4){c.beginPath();c.moveTo(x0,k);c.lineTo(x0+w,k);c.stroke()}},
+ tremplin(c,x,y,s,w,h){w=w||20;h=h||16;const x0=s===0?x:x-10,y0=s===0?y:y-8;c.fillStyle="#c62828";c.beginPath();c.moveTo(x0,y0+h);c.lineTo(x0+w,y0);c.lineTo(x0+w,y0+h);c.closePath();c.fill()},
+ poutre(c,x,y,s,w){w=w||26;const x0=s===0?x:x-13;c.fillStyle="#b08b3a";c.fillRect(x0,y-4,w,8);c.strokeStyle="#6d4c1e";c.lineWidth=1;c.strokeRect(x0,y-4,w,8)},
+ barrefixe(c,x,y,s,w){w=w||26;const x0=s===0?x:x-13;c.fillStyle="#555";c.fillRect(x0-3,y-9,6,18);c.fillRect(x0+w-3,y-9,6,18);c.strokeStyle="#9e9e9e";c.lineWidth=4;c.beginPath();c.moveTo(x0,y);c.lineTo(x0+w,y);c.stroke()},
+ banc(c,x,y,s,w){w=w||26;const x0=s===0?x:x-13;c.fillStyle="#a1887f";c.fillRect(x0,y-4,w,8);c.strokeStyle="#5d4037";c.lineWidth=1;c.strokeRect(x0,y-4,w,8)},
+ plinth(c,x,y,s,w,h){SMD.caisson(c,x,y,s,w||20,h||12)},
+ espalier(c,x,y,s,w,h){w=w||22;h=h||16;const x0=s===0?x:x-11,y0=s===0?y:y-8;c.strokeStyle="#8d6e63";c.lineWidth=2;c.strokeRect(x0,y0,w,h);for(let k=x0+4;k<x0+w;k+=4){c.beginPath();c.moveTo(k,y0);c.lineTo(k,y0+h);c.stroke()}},
+ mur(c,x,y,s,w,h){w=w||8;h=h||22;const x0=s===0?x:x-4,y0=s===0?y:y-11;c.fillStyle="#9e9e9e";c.fillRect(x0,y0,w,h);c.strokeStyle="#616161";c.strokeRect(x0,y0,w,h)},
+ filet(c,x,y,s,h){h=h||24;c.strokeStyle="#222";c.lineWidth=5;c.beginPath();c.moveTo(x,y-h/2);c.lineTo(x,y+h/2);c.stroke();c.fillStyle="#222";c.fillRect(x-4,y-h/2-4,8,5);c.fillRect(x-4,y+h/2-1,8,5)},
+ but(c,x,y,s,h,dir){h=h||22;dir=dir||1;c.fillStyle="#fff";c.strokeStyle="#c00";c.lineWidth=4;c.beginPath();c.moveTo(x,y-h/2);c.lineTo(x+8*dir,y-h/2);c.lineTo(x+8*dir,y+h/2);c.lineTo(x,y+h/2);c.stroke()},
+ panier(c,x,y,s,dir){dir=dir||1;c.strokeStyle="#333";c.lineWidth=4;c.beginPath();c.moveTo(x+8*dir,y-12);c.lineTo(x+8*dir,y+12);c.stroke();c.strokeStyle="#e65100";c.lineWidth=2.5;c.beginPath();c.arc(x,y,7,0,7);c.stroke()},
+ fosse(c,x,y,s,w,h){w=w||24;h=h||16;const x0=s===0?x:x-12,y0=s===0?y:y-8;c.fillStyle="#f3dc9b";c.fillRect(x0,y0,w,h);c.strokeStyle="#b08b3a";c.lineWidth=1.5;c.strokeRect(x0,y0,w,h)},
+ planche(c,x,y,s,h){h=h||22;c.fillStyle="#fff";c.fillRect(x-3,y-h/2,7,h);c.strokeStyle="#333";c.lineWidth=1;c.strokeRect(x-3,y-h/2,7,h)},
+ cible(c,x,y,s,w,h){w=w||24;h=h||16;const x0=s===0?x:x-12,y0=s===0?y:y-8;c.save();c.fillStyle="rgba(255,235,59,.55)";c.fillRect(x0,y0,w,h);c.strokeStyle="#f9a825";c.lineWidth=2;c.setLineDash([4,3]);c.strokeRect(x0,y0,w,h);c.restore()},
+ fil(c,x,y,s,x2,y2){if(x2==null){x2=x+12;y2=y;x-=12}c.strokeStyle="#333";c.lineWidth=1.5;c.beginPath();c.moveTo(x,y);c.lineTo(x2,y2);c.stroke()},
+ cercle(c,x,y,s,r){r=r||(s===0?26:9);c.fillStyle="#9e9e9e";c.beginPath();c.arc(x,y,r,0,7);c.fill();c.strokeStyle="#fff";c.lineWidth=2;c.stroke();c.strokeStyle="#fff";c.lineWidth=4;c.beginPath();c.arc(x,y,r+2,-.7,.7);c.stroke()},
+ secteur(c,x,y,s){c.strokeStyle="#fff";c.lineWidth=2;c.beginPath();c.moveTo(x-11,y+6);c.lineTo(x+12,y-6);c.moveTo(x-11,y+6);c.lineTo(x+12,y+12);c.stroke();c.strokeStyle="#558b2f";c.lineWidth=1;c.strokeRect(x-12,y-8,24,16)},
+ planincl(c,x,y,s,w,h){w=w||24;h=h||14;const x0=s===0?x:x-12,y0=s===0?y:y-7;c.fillStyle="#f5a623";c.beginPath();c.moveTo(x0,y0+h*0.3);c.lineTo(x0+w,y0);c.lineTo(x0+w,y0+h);c.lineTo(x0,y0+h);c.closePath();c.fill()},
+ ligne(c,x,y,s,x2){if(x2==null){x2=x+12;x-=12}c.strokeStyle="#fff";c.lineWidth=3;c.beginPath();c.moveTo(x,y);c.lineTo(x2,y);c.stroke();c.strokeStyle="#1d4f8a";c.lineWidth=1;c.strokeRect(Math.min(x,x2),y-2,Math.abs(x2-x),4)}};
+function sM(S,k,x,y,...a){S.mat[k]=1;const c=S.c;c.save();SMD[k](c,x,y,...a);c.restore()}
+/* fonds */
+const SBG={hand:"#9fc5e8",basket:"#e3b679",foot:"#5aa05a",volley:"#cfe3c4",piste:"#cfe3c4",gym:"#f2efe6",floor:"#eef2f6"};
+function sFill(S,col){S.c.fillStyle=col;S.c.fillRect(0,0,SC_W,S.H)}
+function sField(S,sp,mode,P){const c=S.c,H=S.H,y0=14,y1=H-14,x0=14,x1=466,cy=(y0+y1)/2;sFill(S,sp==="foot"?"#4f9a4f":sp==="basket"?"#d9a066":"#6fa8dc");
+ c.fillStyle=sp==="foot"?"#5aa05a":sp==="basket"?"#e9c08b":"#9fc5e8";c.fillRect(x0,y0,x1-x0,y1-y0);c.strokeStyle="#fff";c.lineWidth=2.5;c.strokeRect(x0,y0,x1-x0,y1-y0);
+ const goal=(gx,dir)=>{const s=dir;if(sp==="hand"){c.fillStyle="#f6d06a";c.beginPath();c.arc(gx,cy,72,s>0?-Math.PI/2:Math.PI/2,s>0?Math.PI/2:Math.PI*1.5);c.fill();c.strokeStyle="#fff";c.lineWidth=2;c.stroke();
+   c.setLineDash([8,6]);c.beginPath();c.arc(gx,cy,108,s>0?-Math.PI/2:Math.PI/2,s>0?Math.PI/2:Math.PI*1.5);c.stroke();c.setLineDash([]);S.mat.but=1;SMD.but(c,gx,cy,1,30,-s)}
+  else if(sp==="basket"){c.fillStyle="#c0504d";c.fillRect(s>0?gx:gx-90,cy-42,90,84);c.strokeStyle="#fff";c.lineWidth=2;c.strokeRect(s>0?gx:gx-90,cy-42,90,84);c.beginPath();c.arc(gx,cy,140,s>0?-Math.PI/2:Math.PI/2,s>0?Math.PI/2:Math.PI*1.5);c.stroke();S.mat.panier=1;SMD.panier(c,gx+14*s,cy,1,-s)}
+  else{c.strokeStyle="#fff";c.lineWidth=2;c.strokeRect(s>0?gx:gx-70,cy-72,70,144);S.mat.but=1;SMD.but(c,gx,cy,1,40,-s)}};
+ if(mode==="full"||mode==="half"){goal(x1,-1);if(mode==="full"){goal(x0,1);c.strokeStyle="#fff";c.lineWidth=2.5;c.beginPath();c.moveTo(240,y0);c.lineTo(240,y1);c.stroke()}
+  else{c.strokeStyle="#fff";c.lineWidth=5;c.beginPath();c.moveTo(x0,y0);c.lineTo(x0,y1);c.stroke()}}
+ const zx=sp==="hand"?x1-108:sp==="basket"?x1-90:x1-70;
+ if(P&&/zone des 9 m/.test(P.L))sTx(S,x1-4,y0+12,"zone des 9 m",{s:13,a:"right"});if(P&&/raquette/.test(P.L))sTx(S,x1-45,cy-56,"raquette",{s:14});
+ if(P&&/médiane/.test(P.L))sTx(S,mode==="full"?240:x0+4,y1-12,"ligne médiane",{s:13,a:mode==="full"?"center":"left"});
+ return{x0,x1,y0,y1,cy,zx}}
+function sCourt(S,P){const c=S.c,H=S.H;sFill(S,"#cfe3c4");const y0=34,y1=H-30;c.fillStyle="#f0b878";c.fillRect(16,y0,448,y1-y0);c.strokeStyle="#fff";c.lineWidth=2.5;c.strokeRect(16,y0,448,y1-y0);
+ c.beginPath();c.moveTo(170,y0);c.lineTo(170,y1);c.moveTo(310,y0);c.lineTo(310,y1);c.stroke();sM(S,"filet",240,(y0+y1)/2,1,y1-y0+16);sTx(S,240,y0-12,"filet",{s:14});
+ sTx(S,90,H-14,"camp A",{s:13,n:1,col:"#333"});sTx(S,390,H-14,"camp B",{s:13,n:1,col:"#333"});return{y0,y1,cy:(y0+y1)/2,xn:240}}
+function sTrack(S,n,x0,x1,o){o=o||{};const c=S.c,H=S.H,top=o.top||40,lh=Math.min(o.lh||52,(H-top-(o.bot||52))/n);sFill(S,"#cfe3c4");c.fillStyle="#c1553b";c.fillRect(8,top,464,lh*n);c.strokeStyle="#fff";c.lineWidth=1.8;
+ for(let i=0;i<=n;i++){c.beginPath();c.moveTo(8,top+i*lh);c.lineTo(472,top+i*lh);c.stroke()}c.lineWidth=4;c.beginPath();c.moveTo(x0,top);c.lineTo(x0,top+lh*n);c.stroke();
+ c.fillStyle="#fff";c.font="bold 12px Arial";c.textAlign="center";c.textBaseline="middle";for(let i=0;i<n;i++)c.fillText(String(i+1),18,top+lh*i+lh/2);return{top,lh,ly:i=>top+lh*i+lh/2,bot:top+lh*n}}
+function sFinish(S,x,top,bot,t,col){const c=S.c;c.save();c.strokeStyle=col||"#111";c.lineWidth=3;c.setLineDash([6,4]);c.beginPath();c.moveTo(x,top-4);c.lineTo(x,bot+4);c.stroke();c.restore();if(t)sTx(S,x,top-14,t,{s:13,col:col||"#111"})}
+/* bandeau « trois groupes qui tournent » (situation de référence) */
+function sRefStrip(S,P,lab){const c=S.c,y=S.H-24;c.fillStyle="rgba(255,255,255,.94)";c.fillRect(4,y-20,472,42);c.strokeStyle="#9aa4b1";c.lineWidth=1;c.strokeRect(4,y-20,472,42);
+ const third=P.roles.includes("arb")&&P.roles.includes("org")?[["arb","org"],"organisateurs / arbitres"]:[[P.roles.includes("arb")?"arb":"org"],"organisateurs"];
+ const G=lab?lab.map(([r,t])=>[Array.isArray(r)?r:[r],t]):[[["ex"],"exécutants"],[["obs"],"observateurs"],third];const x0s=[12,160,300];
+ G.forEach(([rs,t],i)=>{let x=x0s[i]+12;rs.forEach(r=>{sP(S,x,y-2,r);x+=27});sTx(S,x-10,y-2,t,{s:12,n:1,a:"left",max:(i<2?x0s[i+1]-26:472)-(x-10)});if(i<2)sAr(S,"rot",[[x0s[i+1]-22,y-2],[x0s[i+1]-4,y-2]])});
+ sAr(S,"rot",[[468,y+12],[468,y+17],[10,y+17],[10,y+12]]);}
+/* filet de sécurité : tout élément du texte absent du dessin est ajouté et étiqueté (et compté) */
+function sEnsure(S,P){const H=S.H;let bx=470;const miss=P.roles.filter(r=>!S.roles[r]);
+ miss.forEach(r=>{bx-=30;sP(S,bx,H-16,r);S.fb.push("role:"+r)});
+ const mm=P.mat.filter(k=>!S.mat[k]);let mx=12;mm.forEach(k=>{sM(S,k,mx+12,22);mx+=30;S.fb.push("mat:"+k)});
+ const lt=S.labels.join(" ");const md=P.dist.filter(d=>!lt.includes(d));if(md.length){sTx(S,8,S.H-12-(miss.length?22:0),"Repères : "+md.join(" ; "),{s:13,a:"left",box:"#fffde7"});S.fb.push("dist:"+md.join(","))}}
+SR.gym=["G","#1f5fbf","Gymnaste"];SR.ta=["A","#1f5fbf","Joueur équipe A"];SR.tb=["B","#d1342f","Joueur équipe B"];
+const sSpread=(n,xs,y0,y1)=>{const out=[],cols=xs.length;const per=Math.ceil(n/cols);for(let j=0;j<n;j++){const ci=j%cols,ri=Math.floor(j/cols),rows=Math.min(per,Math.ceil((n-ci)/cols));out.push([xs[ci]+(ri%2?8:0),rows<=1?(y0+y1)/2:y0+(y1-y0)*(ri+.5)/rows])}return out};
+const sRing=(cx,cy,rx,ry,n,off)=>Array.from({length:n},(_,j)=>{const t=(off||-Math.PI/2)+j*2*Math.PI/n;return[cx+rx*Math.cos(t),cy+ry*Math.sin(t)]});
+const sTo=(a,b,d)=>{const L=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return[a[0]+(b[0]-a[0])*d/L,a[1]+(b[1]-a[1])*d/L]};
+const sSeg=(a,b,d1,d2)=>[sTo(a,b,d1==null?15:d1),sTo(b,a,d2==null?15:d2)];
+function sPut(S,arr,role,o){o=o||{};arr.forEach((p,j)=>sP(S,p[0],p[1],role,{n:arr.length>1?j+1:"",u:o.u,lab:o.lab}))}
+function ruleLabel(t){const R=[[/(\d+) passes consécutives/,m=>`but après ${m[1]} passes = ×2`],[/passe reçue en mouvement/,()=>"but après passe en mouvement = ×2"],[/passe en arrière interdite/,()=>"passe en arrière interdite"],
+ [/contre-attaque \(moins de (\d+) passes\)/,m=>`contre-attaque (< ${m[1]} passes) = ×2`],[/1 point par tir cadré, 2 points par but/,()=>"tir cadré = 1 pt ; but = 2 pts"],[/zone arrière/,()=>"renvoi en zone arrière = point double"],
+ [/point double si ([^.;]{4,60})/,m=>"×2 si "+m[1]],[/compte double s’il ([^.;]{4,40})/,m=>"×2 s’il "+m[1]],[/(\d+) secondes? maximum/,m=>m[1]+" s max par possession"],[/déplacement de plus de (\d+ m)/,m=>"défense après déplacement > "+m[1]+" = ×2"]];
+ for(const[r,fn]of R){const m=t.match(r);if(m)return fn(m)}const s=(t.split(/[:.]/)[1]||"").trim();return s.length>64?s.slice(0,62).replace(/\s\S*$/,"")+"…":s}
+/* ---------- SPORTS COLLECTIFS ---------- */
+function sSC(S,P,f,ti,isRef){const sp=f.aps==="Basketball"?"basket":f.aps==="Football"?"foot":"hand",L=P.L,vs=P.vs||[3,1],a=vs[0],b=vs[1],gbOn=P.roles.includes("gb"),H=S.H;
+ const ball=(p)=>sM(S,"ballon",p[0]+13,p[1]+9);
+ const goalPt=[466,H/2],GB=()=>{if(gbOn)sP(S,452,H/2,"gb")};
+ const plain=(col)=>{sFill(S,col||({hand:"#9fc5e8",basket:"#e9c08b",foot:"#5aa05a"})[sp])};
+ if(isRef||/^match/i.test(ti)||/terrain réduit|terrain réglementaire|vers le (but|panier) adverse :|^\d+ contre \d+ :? ?(un but|1 point|tout but|passe en arrière)/.test(L)&&!/couloir|carré|cercle|colonnes/.test(L)){S.layout="match";
+  if(isRef){S.H0=H;S.H=H-58}const F=sField(S,sp,"full",P);S.H=H;const yb=F.y1;const A=sSpread(a,a>4?[140,200,262]:[170,250],F.y0+26,yb-26),D=sSpread(b,b>4?[330,380,420]:[340,405],F.y0+30,yb-30);
+  sPut(S,A,"att",{lab:"Attaquant (équipe A)"});sPut(S,D,"def",{lab:"Défenseur (équipe B)"});GB();ball(A[0]);if(A[1])sAr(S,"ball",sSeg(A[0],A[1]));const t=A[A.length-1];sAr(S,"run",[[t[0]+14,t[1]],[t[0]+70,t[1]+(t[1]<F.cy?-14:14)]]);
+  sTx(S,240,F.y0+14,`${a} contre ${b}${/réduit/.test(L)?" – terrain réduit":/réglementaire/.test(L)?" – terrain réglementaire":""}`,{s:15,box:"#fff"});const r=isRef?"":ruleLabel(P.t);if(r)sTx(S,240,yb-14,r,{s:14,box:"#fffde7"});
+  if(isRef){sRefStrip(S,P);sTx(S,60,F.y0+40,"binômes A.A’ – B.B’",{s:12,a:"left",n:1})}return}
+ if(/cercle de/.test(L)){S.layout="cercle";plain();const d=P.def||2,G=P.groups||1,N=f._effN||32,n=Math.max(4,Math.min(8,Math.round(N/Math.max(G,1))-d)),cx=240,cy=H/2-12,R=Math.min(105,H/2-40);
+  S.c.strokeStyle="#fff";S.c.lineWidth=3;S.c.beginPath();S.c.arc(cx,cy,R,0,7);S.c.stroke();const A=sRing(cx,cy,R,R,n);sPut(S,A,"att",{lab:"Joueur du cercle"});
+  const Dp=d===1?[[cx,cy]]:sRing(cx,cy,24,24,d,0);sPut(S,Dp,"def");ball(A[0]);for(let j=0;j<3;j++)sAr(S,"ball",sSeg(A[j],A[j+1]));sAr(S,"run",sSeg(Dp[0],[(A[1][0]+A[2][0])/2,(A[1][1]+A[2][1])/2],16,4));
+  const m=P.L.match(/cercle de (\d+(?:,\d+)?) m/);if(m)sDim(S,cx-R,cy+R+16,cx+R,cy+R+16,`cercle de ${m[1]} m`);if(G>1)sTx(S,10,18,`1 groupe sur ${G} (${G} cercles)`,{s:14,a:"left",box:"#fff"});
+  sTx(S,470,18,"intercepté → au centre",{s:13,a:"right",n:1});return}
+ if(/carré/.test(L)){S.layout="carre";plain();const x0=150,y0=36,s=Math.min(200,H-80);S.c.fillStyle="rgba(255,255,255,.35)";S.c.fillRect(x0,y0,s,s);S.c.strokeStyle="#fff";S.c.lineWidth=2;S.c.strokeRect(x0,y0,s,s);
+  [[x0,y0],[x0+s,y0],[x0,y0+s],[x0+s,y0+s]].forEach(p=>sM(S,"plot",p[0],p[1]));const m=P.t.match(/(\d+) m × (\d+) m/);if(m){sDim(S,x0,y0-14,x0+s,y0-14,m[1]+" m");sDim(S,x0+s+18,y0,x0+s+18,y0+s,m[2]+" m",{ox:24,oy:0})}
+  const cx=x0+s/2,cy=y0+s/2,A=sRing(cx,cy,s/2-22,s/2-22,a,-Math.PI/4),D=b===1?[[cx,cy]]:sRing(cx,cy,26,26,b,0);sPut(S,A,"att");sPut(S,D,"def");ball(A[0]);for(let j=0;j<Math.min(a-1,3);j++)sAr(S,"ball",sSeg(A[j],A[j+1]));
+  sAr(S,"run",sSeg(D[0],A[1],16,24));sTx(S,cx,y0+s+20,"conserver la balle",{s:14});return}
+ if(/couloir de (\d+) m/.test(L)){S.layout="couloir";const F=sField(S,sp,"half",P),len=+L.match(/couloir de (\d+) m/)[1],xs=len>=20?F.x0:F.x1-(F.x1-F.x0)*len/20,cy=F.cy;
+  S.c.save();S.c.fillStyle="rgba(255,255,255,.28)";S.c.fillRect(xs,cy-62,F.x1-xs,124);S.c.strokeStyle="#fff59d";S.c.lineWidth=3;S.c.setLineDash([10,6]);S.c.strokeRect(xs,cy-62,F.x1-xs,124);S.c.restore();
+  sDim(S,xs,cy-76,F.x1,cy-76,`couloir de ${len} m`);
+  if(a===1&&b===1){const A=[xs+26,cy],D=[F.x1-100,cy];sP(S,...A,"att");sP(S,...D,"def");ball(A);sAr(S,"drib",[[A[0]+16,A[1]],[D[0]-40,cy-30]]);sAr(S,"run",sSeg(D,[D[0]-50,cy-20],15,2));
+   sTx(S,A[0]+4,cy+50,"départ du fond",{s:13});sTx(S,D[0],cy+50,"devant le but",{s:13})}
+  else{const A=sSpread(a,[xs+30,xs+70],cy-44,cy+44),D=sSpread(b,[F.zx-30],cy-40,cy+40);sPut(S,A,"att");sPut(S,D,"def");ball(A[0]);if(A[1])sAr(S,"ball",sSeg(A[0],A[1]));
+   A.forEach((p,j)=>j&&sAr(S,"run",[[p[0]+15,p[1]],[p[0]+110,p[1]]]));sTx(S,xs+6,cy+80,/médiane/.test(L)?"départ ligne médiane":"départ",{s:13,a:"left"})}
+  if(/1 point/.test(L))sTx(S,F.x1-60,cy+80,"1 point",{s:14,box:"#fffde7"});return}
+ if(/(\d+|cinq) couloirs/.test(L)){S.layout="couloirs-signal";const F=sField(S,sp,"full",P),n=P.lanes||5,h=(F.y1-F.y0)/n;S.c.save();S.c.strokeStyle="#fff59d";S.c.lineWidth=2;S.c.setLineDash([8,6]);
+  for(let i=1;i<n;i++){S.c.beginPath();S.c.moveTo(F.x0,F.y0+i*h);S.c.lineTo(F.x1,F.y0+i*h);S.c.stroke()}S.c.restore();const k=P.unit||n,A=Array.from({length:k},(_,j)=>[150+(j%2)*40,F.y0+h*(j%n+.5)]);
+  sPut(S,A,"att",{u:1,lab:"Élève (progression)"});ball(A[0]);for(let j=0;j<Math.min(k-1,3);j++)sAr(S,"ball",sSeg(A[j],[A[j+1][0]+50,A[j+1][1]]));
+  A.forEach((p,j)=>{if(j%2===0)sAr(S,"back",[[p[0]+130,p[1]-8],[p[0]-90,p[1]-8]],{lab:"Repli au signal"})});sP(S,240,F.y1+0,"ens",{lab:"Enseignant (signal)"});sTx(S,300,F.y1-14,"signal → repli",{s:13});
+  sTx(S,240,F.y0+12,`${n} couloirs`,{s:14,box:"#fff"});return}
+ if(/occupent les couloirs/.test(L)){S.layout="occupation";const F=sField(S,sp,"half",P),h=(F.y1-F.y0)/3;S.c.save();S.c.strokeStyle="#fff59d";S.c.lineWidth=2;S.c.setLineDash([8,6]);
+  [1,2].forEach(i=>{S.c.beginPath();S.c.moveTo(F.x0,F.y0+i*h);S.c.lineTo(F.x1,F.y0+i*h);S.c.stroke()});S.c.restore();["gauche","centre","droite"].forEach((t,i)=>sTx(S,F.x0+8,F.y0+h*i+14,t,{s:13,a:"left"}));
+  const A=Array.from({length:a},(_,j)=>[120+Math.floor(j/3)*100,F.y0+h*(j%3+.5)+(j>=3?10:0)]),D=sSpread(b,[F.zx-24],F.y0+40,F.y1-40);sPut(S,A,"att");sPut(S,D,"def");ball(A[1]||A[0]);
+  for(let j=0;j<Math.min(a-1,3);j++)sAr(S,"ball",sSeg(A[j+1]||A[0],A[(j+2)%a]));sTx(S,300,F.y1-10,"1 joueur par couloir",{s:13});return}
+ if(/vagues|faire avancer/.test(L)){S.layout="vagues";const F=sField(S,sp,"half",P),et=/étagée/.test(f._obj||""),A=sSpread(a,[52],F.y0+34,F.y1-34);sPut(S,A,"att",{u:1});
+  const D=Array.from({length:b},(_,j)=>[b===1?216:216+82*j*(et?1:0)+(et?0:0),b===1?F.cy:et?F.cy+(j%2?28:-28):F.y0+60+(F.y1-F.y0-120)*j/Math.max(b-1,1)]);if(!et&&b>1)D.forEach((d,j)=>d[0]=257+(j%2?41:-41));sPut(S,D,"def");ball(A[0]);
+  const n=+((L.match(/(\d+) passes maximum/)||[0,4])[1]);let p=[A[0][0]+16,A[0][1]];for(let j=1;j<=Math.min(n,4);j++){const q=[52+j*82,j%2?F.y1-46:F.y0+46];sAr(S,"ball",[p,sTo(q,p,10)]);sTx(S,(p[0]+q[0])/2+8,(p[1]+q[1])/2,String(j),{s:13,col:"#c62828"});p=q}
+  A.forEach((q,j)=>{if(j)sAr(S,"run",[[q[0]+15,q[1]],[q[0]+70,q[1]]])});sTx(S,150,F.y0+12,`${n} passes max jusqu’à la zone`,{s:13,box:"#fff"});sTx(S,200,F.y1-12,`1) sans défenseur  2) ${a} contre ${b}`,{s:13,box:"#fff"});
+  if(et)sTx(S,D[b-1][0]+16,D[b-1][1]+22,"défense étagée",{s:13,col:"#b71c1c",a:"left",n:1});return}
+ if(/colonnes de/.test(L)){S.layout="colonnes";const F=sField(S,sp,"half",P),k=P.unit||3,C=Array.from({length:k},(_,j)=>[150-j*34,F.y1-50]);sPut(S,C,"att",{u:1,lab:"Joueur (colonne)"});ball(C[0]);
+  const R=[250,F.y0+70];sAr(S,"ball",sSeg(C[0],R));sAr(S,"run",sSeg([C[0][0],C[0][1]],[R[0]+20,R[1]+60],16,4),{lab:"Course (le passeur suit)"});sAr(S,"ball",[[R[0]+14,R[1]],[goalPt[0]-10,goalPt[1]-14]]);
+  sTx(S,R[0]+20,R[1]-20,"tir",{s:14});GB();sTx(S,150,F.y1-22,`colonne de ${k}`,{s:13});return}
+ if(/non-porteur|\(npb\)/.test(L)){S.layout="pb-npb";const F=sField(S,sp,"half",P),y1=F.y1-60,y2=F.y0+60;[0,1,2].forEach(j=>{sP(S,110-j*32,y1,"att",{n:"",lab:"Porteur de balle (PB)"})});[0,1,2].forEach(j=>sP(S,110-j*32,y2,"rec",{lab:"Non-porteur (NPB)"}));
+  ball([110,y1]);sAr(S,"drib",[[126,y1],[270,y1]]);sAr(S,"run",[[126,y2],[310,y2+10]]);sAr(S,"ball",[[275,y1-10],[306,y2+24]]);sAr(S,"ball",[[322,y2+12],[goalPt[0]-10,goalPt[1]-10]]);
+  sTx(S,70,y1+26,"PB",{s:14});sTx(S,70,y2-26,"NPB",{s:14});GB();return}
+ if(/passeur fixe/.test(L)){S.layout="appels";plain();const P0=[110,H/2],R1=[320,H/2-80],R2=[320,H/2+80],D=[300,H/2];sP(S,...P0,"pas",{u:1});sP(S,...R1,"rec",{n:1,u:1});sP(S,...R2,"rec",{n:2,u:1});sP(S,...D,"def");ball(P0);
+  sAr(S,"run",[[R1[0]+14,R1[1]],[R1[0]+70,R1[1]-20]],{lab:"Démarquage"});sAr(S,"run",[[R2[0]+14,R2[1]],[R2[0]+60,R2[1]+24]]);sAr(S,"ball",sSeg(P0,[R1[0]+70,R1[1]-20],14,14));sTx(S,240,H-16,"changement de rôle après 5 passes",{s:13});return}
+ if(/repli|reviennent derrière/.test(L)){S.layout="repli";const F=sField(S,sp,"full",P),A=sSpread(a,[330,380],F.y0+40,F.y1-40),D=sSpread(b,[425],F.y0+70,F.y1-70);sPut(S,A,"att");sPut(S,D,"def");
+  sTx(S,400,F.cy,"✕",{s:22,col:"#c62828"});sM(S,"ballon",414,F.cy+12);A.forEach(p=>sAr(S,"back",[[p[0]-14,p[1]],[200,p[1]]],{lab:"Repli défensif"}));const m=L.match(/moins de (\d+) s/);sTx(S,150,F.y0+14,`perte de balle → repli${m?" en moins de "+m[1]+" s":""}`,{s:13,box:"#fff"});return}
+ if(/tout le terrain/.test(L)){S.layout="contre-attaque";const F=sField(S,sp,"full",P),A=sSpread(a,[130],F.cy-50,F.cy+50),D=[[80,F.cy]];sPut(S,A,"att");sPut(S,D,"def",{lab:"Défenseur → attaquant"});
+  ball([80,F.cy]);sAr(S,"drib",[[96,F.cy+14],[380,F.cy+30]],{lab:"Contre-attaque (dribble)"});sTx(S,250,F.y1-12,"récupération → vers l’autre but",{s:13});return}
+ if(/groupes devant la ligne médiane/.test(L)){S.layout="surnombre";const F=sField(S,sp,"half",P),g=P.groups||4,ys=Array.from({length:g},(_,j)=>F.y0+30+j*(F.y1-F.y0-60)/(g-1||1));
+  ys.forEach((y,j)=>{sP(S,40,y,"grp");sP(S,70,y,"grp")});const S1=[310,F.cy];sP(S,...S1,"att",{lab:"Attaquant seul (1 contre 0)"});sAr(S,"ball",[[84,ys[1]],[200,F.cy-20]]);sAr(S,"ball",[[214,F.cy-14],[S1[0]-14,S1[1]]]);
+  ball(S1);sAr(S,"ball",[[S1[0]+16,S1[1]],[goalPt[0]-10,goalPt[1]+12]]);sTx(S,330,F.cy+34,"1 contre 0 : tir",{s:13});sTx(S,110,F.y0+10,`${g} groupes`,{s:13,a:"left"});GB();return}
+ if(/combinaison/.test(L)){S.layout="combinaison";const F=sField(S,sp,"half",P),arcP=(R,n,sp2)=>Array.from({length:n},(_,j)=>{const t=Math.PI+(n===1?0:(j/(n-1)-.5)*sp2);return[F.x1+R*Math.cos(t),F.cy+R*0.92*Math.sin(t)]}),A=arcP(140,a,1.55),D=arcP(88,b,1.5);
+  sPut(S,A,"att");sPut(S,D,"def");ball(A[0]);if(A[2]){sAr(S,"run",[[A[1][0]+6,A[1][1]+12],[A[2][0]+10,A[2][1]-20]],{lab:"Croisement"});sAr(S,"run",[[A[2][0]-6,A[2][1]-12],[A[1][0]-6,A[1][1]+22]])}
+  sAr(S,"ball",sSeg(A[0],A[1]));sTx(S,150,F.y0+12,"croisement / écran / renversement",{s:13,box:"#fff"});return}
+ S.layout=/intercept/.test(L)?"interceptions":/espace libre/.test(L)?"passe-et-va":"opposition";plain();const cx=240,cy=H/2,A=sRing(cx,cy,130,95,a,-Math.PI/2),D=b?sRing(cx,cy,40,30,b,0):[];sPut(S,A,"att");sPut(S,D,"def");ball(A[0]);
+ if(S.layout==="interceptions"){sAr(S,"ball",sSeg(A[0],A[1]));D.forEach((p,j)=>{const q=A[(j+1)%a],r=A[(j+2)%a];sAr(S,"run",sSeg(p,[(q[0]+r[0])/2,(q[1]+r[1])/2],15,2),{lab:"Se placer sur la trajectoire"})});sTx(S,cx,H-14,"1 point par interception",{s:13})}
+ else if(S.layout==="passe-et-va"){const q=A[1];sAr(S,"ball",sSeg(A[0],q));const np=[A[0][0]+90,A[0][1]+40];sAr(S,"run",sSeg(A[0],np,15,2));sAr(S,"ball",sSeg(q,np,15,10));sTx(S,np[0]+10,np[1]+24,"espace libre",{s:13})}
+ else for(let j=0;j<Math.min(a-1,3);j++)sAr(S,"ball",sSeg(A[j],A[j+1]))}
+/* ---------- VOLLEY-BALL ---------- */
+function sRV(S,P,f,ti,isRef){const L=P.L,H=S.H;if(isRef)S.H=H-58;const C=sCourt(S,P);S.H=H;const cy=C.cy,y0=C.y0,y1=isRef?H-88:C.y1,ball=p=>sM(S,"ballon",p[0]+12,p[1]-12);
+ const arc=(a,b,h,k,o)=>sAr(S,k||"ball",[a,[(a[0]+b[0])/2,Math.min(a[1],b[1])-(h||60)],b],Object.assign({curve:1},o||{}));
+ const rep=P.rep?P.rep:"";
+ if(isRef||/^match/i.test(ti)||/contre \d+ sur terrain réduit/.test(L)){S.layout="match";const n=P.vs?P.vs[0]:2,m=P.vs?P.vs[1]:2;const A=sSpread(n,n>2?[80,160]:[110],y0+30,y1-30),B=sSpread(m,m>2?[400,320]:[370],y0+30,y1-30);
+  if(/zone arrière/.test(L)){sM(S,"cible",16,y0,0,60,y1-y0);sM(S,"cible",404,y0,0,60,y1-y0);sTx(S,434,y0+14,"zone arrière",{s:12})}sPut(S,A,"ta");sPut(S,B,"tb");S.vsDrawn=[A.length,B.length];ball(A[0]);arc([A[0][0]+12,A[0][1]],[430,y1-30],70);
+  sTx(S,240,y1+(isRef?14:-12),`${n} contre ${m}${/réduit/.test(L)?" – terrain réduit":""}`,{s:14,box:"#fff"});if(!isRef){const r=ruleLabel(P.t);if(r&&!/zone arrière/.test(r))sTx(S,240,y0+14,r,{s:12,box:"#fffde7",max:440})}else sRefStrip(S,P);return}
+ if(/face à face/.test(L)){S.layout="face-a-face";const a=[90,cy],b=[200,cy];sP(S,...a,"lan",{u:1});sP(S,...b,"ex",{u:1,lab:/manchette/.test(L)?"Joueur (manchette)":"Joueur"});ball(a);arc([a[0]+10,a[1]-8],[b[0]-8,b[1]-10],50);arc([b[0]-10,b[1]+10],[a[0]+10,a[1]+12],-30);
+  const m=L.match(/\((\d+) m\)/);if(m)sDim(S,a[0],cy+40,b[0],cy+40,m[1]+" m");if(rep)sTx(S,145,y0+14,rep+" puis changement",{s:13});return}
+ if(/à droite ou à gauche/.test(L)){S.layout="deplacement-renvoi";const l=[330,cy],j=[120,cy];sP(S,...l,"lan",{u:1});sP(S,...j,"ex",{u:1,lab:"Joueur"});ball(l);arc([l[0]-12,l[1]],[130,cy-70],40);arc([l[0]-12,l[1]+6],[130,cy+70],-10);
+  sAr(S,"run",[[j[0],j[1]-14],[j[0]+6,cy-58]]);sAr(S,"run",[[j[0],j[1]+14],[j[0]+6,cy+58]]);sM(S,"cible",400,y0,0,62,y1-y0);sTx(S,430,y1-12,"fond du camp",{s:12});arc([140,cy-74],[430,cy-40],70);return}
+ if(/service/.test(L)&&/cerceaux|zone/.test(L)&&!/réceptionne/.test(L)){S.layout="service-cible";const m=L.match(/depuis (\d+) m/),d=m?+m[1]:6,x6=240-224*d/9,s1=[x6,cy+50],s2=[18,cy-40];sP(S,...s1,"ex",{n:"",lab:"Serveur"});sP(S,...s2,"ex",{lab:"Serveur"});
+  if(m)sDim(S,x6,y1-14,240,y1-14,d+" m");sTx(S,10,y0-12,"ligne de fond",{s:12,a:"left"});const R=[[330,cy-60],[410,cy],[340,cy+60]];R.forEach(p=>sM(S,"cerceau",...p,1.4));arc([s1[0]+12,s1[1]-8],R[2],60);arc([s2[0]+12,s2[1]],R[0],70);
+  if(rep)sTx(S,330,y1-12,rep+" par élève",{s:13});return}
+ if(/en cloche/.test(L)){S.layout="balle-lancee";const a=[130,cy],b=[360,cy];sP(S,...a,"lan",{u:1,lab:"Lanceur (A)"});sP(S,...b,"ex",{u:1,lab:"Joueur (B)"});ball(a);arc([a[0]+10,a[1]-10],[b[0]-10,b[1]-14],110);sAr(S,"run",[[b[0]+12,b[1]+16],[b[0]-10,b[1]+30]]);
+  sTx(S,360,y1-12,"bloquer avant le rebond",{s:13});return}
+ if(/défenseurs placés en fond/.test(L)){S.layout="defense-terrain";const at=[290,cy-20],D=[[60,cy-60],[60,cy+60]];sP(S,...at,"att");sPut(S,D,"def");ball(at);sAr(S,"ball",[[at[0]-14,at[1]],[80,cy-50]]);
+  sAr(S,"ball",[[76,cy-62],[210,cy-10]]);sAr(S,"run",[[D[1][0]+14,D[1][1]],[110,cy+30]]);sTx(S,110,y1-12,"remonter vers le filet",{s:13});return}
+ if(/déplacements avant/.test(L)){S.layout="deplacements-signal";const j=[130,cy],w=[60,cy+70],l=[200,cy-70];sP(S,...j,"ex",{n:1,u:1,lab:"Joueur"});sP(S,...w,"ex",{n:2,u:1});sP(S,...l,"lan",{u:1,lab:"Partenaire lanceur"});
+  [[0,-1],[0,1],[-1,0],[1,0]].forEach(([dx,dy])=>sAr(S,"run",[[j[0]+dx*15,j[1]+dy*15],[j[0]+dx*46,j[1]+dy*46]]));ball(l);arc([l[0]-12,l[1]+6],[j[0]+30,j[1]-30],30);sTx(S,130,y1-12,"au signal",{s:13});return}
+ if(/triangle/.test(L)){S.layout="triangle";const l=[60,cy+60],r=[110,cy-55],p=[214,cy+10];sP(S,...l,"lan",{u:1});sP(S,...r,"rec",{u:1,lab:"Réceptionneur"});sP(S,...p,"pas",{u:1,lab:"Joueur près du filet"});ball(l);
+  arc(sTo(l,r,14),sTo(r,l,14),30);arc(sTo(r,p,14),sTo(p,r,14),40);arc(sTo(p,l,14),sTo(l,p,14),-20);sTx(S,120,y1-12,"rotation toutes les 5 balles",{s:13});return}
+ if(/réceptionneur → passeur|3 touches|trois touches/.test(L+ti.toLowerCase())){S.layout="trois-touches";const r=[80,cy+50],p=[214,cy-10],a=[170,cy-80];sP(S,...r,"rec",{u:1,lab:"Réceptionneur"});sP(S,...p,"pas",{u:1,lab:"Passeur (au filet)"});sP(S,...a,"att",{u:1});ball(r);
+  arc(sTo(r,p,14),sTo(p,r,14),50);sTx(S,150,cy-24,"1",{s:14});arc(sTo(p,a,14),sTo(a,p,14),40);sTx(S,205,cy-70,"2",{s:14});sAr(S,"ball",[[a[0]+12,a[1]],[400,cy+40]]);sTx(S,300,cy-30,"3",{s:14});
+  sTx(S,120,y1-12,/sans opposition/.test(L)?"sans opposition":"",{s:13});if(rep)sTx(S,360,y1-12,rep+" puis rotation",{s:13});return}
+ if(/rotation des postes/.test(L)){S.layout="rotation-postes";const r=[80,cy+50],p=[214,cy-10],a=[150,cy-80];sP(S,...r,"rec",{u:1,lab:"Réceptionneur"});sP(S,...p,"pas",{u:1});sP(S,...a,"att",{u:1});
+  sAr(S,"rot",sSeg(r,p,16,16));sAr(S,"rot",sSeg(p,a,16,16));sAr(S,"rot",sSeg(a,r,16,16),{lab:"Rotation des postes"});sTx(S,140,y1-12,"rotation après 5 balles",{s:13});return}
+ if(/zone matérialisée/.test(L)){S.layout="renvoi-zone";const a=[120,cy],b=[330,cy+40];sP(S,...a,"ex",{n:1,u:1,lab:"Joueur"});sP(S,...b,"ex",{n:2,u:1});const z=[380,y0+20,70,70];sM(S,"cible",z[0],z[1],0,z[2],z[3]);
+  [[z[0],z[1]],[z[0]+z[2],z[1]],[z[0],z[1]+z[3]],[z[0]+z[2],z[1]+z[3]]].forEach(q=>sM(S,"plot",...q));ball(a);arc([a[0]+12,a[1]-6],[z[0]+35,z[1]+40],70);sTx(S,415,z[1]+z[3]+16,"zone cible",{s:12});if(rep)sTx(S,120,y1-12,rep+" puis changement",{s:13});return}
+ if(/cerceau tenu/.test(L)){S.layout="passe-cible";const a=[80,cy],b=[190,cy];sP(S,...a,"ex",{u:1,lab:"Passeur"});sP(S,...b,"aid",{u:1,lab:"Partenaire (tient le cerceau)"});sM(S,"cerceau",b[0],b[1]-28,1.2);ball(a);arc([a[0]+10,a[1]-10],[b[0],b[1]-30],60);
+  const m=L.match(/à (\d+) m/);if(m)sDim(S,a[0],cy+40,b[0],cy+40,m[1]+" m");return}
+ if(/touche haute/.test(L)){S.layout="touche-haute";const a=[100,cy],b=[200,cy];sP(S,...a,"ex",{n:1,u:1,lab:"Joueur"});sP(S,...b,"ex",{n:2,u:1});ball(a);arc([a[0]+10,a[1]-12],[b[0]-10,b[1]-12],70);arc([b[0]-10,b[1]+12],[a[0]+10,a[1]+12],-40);sTx(S,150,y1-12,"compter les touches réussies",{s:13});return}
+ if(/sert|service/.test(L)){S.layout="service-reception";const a=[18,cy],b=[380,cy];sP(S,...a,"ex",{u:1,lab:"Serveur (A)"});sP(S,...b,"rec",{u:1,lab:"Réceptionneur (B)"});ball(a);arc([a[0]+12,a[1]-8],[b[0]-12,b[1]-10],80);sTx(S,300,y1-12,"changement après 5 services",{s:13});return}
+ S.layout="echange";const a=[120,cy],b=[360,cy];sP(S,...a,"ex",{n:1,u:1,lab:"Joueur"});sP(S,...b,"ex",{n:2,u:1});ball(a);arc([a[0]+12,a[1]-8],[b[0]-12,b[1]-10],80)}
+/* ---------- ATHLÉTISME ---------- */
+const sMv=s=>+String(s).replace(",",".");
+function sRunners(S,T,n,x,o){o=o||{};for(let i=0;i<n;i++)sP(S,x+(o.stag?o.stag*i:0),T.ly(i),"ex",{n:o.num?i+1:"",u:o.u,lab:o.lab||"Coureur"})}
+function sVitesse(S,P,f,ti,isRef){const L=P.L,H=S.H,gf=P.gf,x0=60,x1=446;
+ const fin=(T,mx,xm)=>{if(gf){sFinish(S,xm(gf.fv),T.top,T.bot,gf.f+" F","#7b1fa2");sFinish(S,xm(gf.gv),T.top,T.bot,gf.g+" G","#111")}};
+ if(isRef||/chronométrée/.test(L)&&!/zone/.test(L)){S.layout="course-chronometree";const n=isRef?3:(P.unit||4),max=gf?gf.gv:50,xm=m=>x0+(x1-x0)*m/max,T=sTrack(S,n,x0,x1,{bot:isRef?66:52});fin(T,max,xm);
+  sRunners(S,T,n,x0-18,{num:1,u:!isRef&&P.unit});for(let i=0;i<n;i++)sAr(S,"run",[[x0,T.ly(i)],[xm(gf?gf.fv:max)-14,T.ly(i)]]);sP(S,x0-30,T.bot+16,"sta");
+  for(let i=0;i<Math.min(n,4);i++)sP(S,x1+18,T.ly(i),"chr",{lab:"Chronométreur (élève)"});if(P.rep)sTx(S,240,T.bot+16,P.rep,{s:13});if(isRef)sRefStrip(S,P);return}
+ if(/deux colonnes/.test(L)){S.layout="reaction-signaux";const x0=110,max=gf?gf.gv:20,xm=m=>x0+(x1-x0)*m/max,T=sTrack(S,2,x0,x1,{lh:70});fin(T,max,xm);
+  [0,1].forEach(i=>{S.c.save();SMD.plot(S.c,x0+6,T.ly(i)-24);S.c.fillStyle=i?"#1565c0":"#c62828";S.c.beginPath();S.c.arc(x0+6,T.ly(i)-26,4,0,7);S.c.fill();S.c.restore();S.mat.plot=1;
+   [0,1,2].forEach(k=>sP(S,x0-16-k*28,T.ly(i),"ex",{lab:"Élève (colonne)"}));sAr(S,"run",[[x0+4,T.ly(i)],[xm(gf?gf.fv:max)-14,T.ly(i)]])});
+  sP(S,x0+60,T.bot+22,"ens",{lab:"Enseignant (signal visuel / auditif)"});sTx(S,x0+150,T.bot+22,"couleur montrée + frappe des mains",{s:13,a:"left",n:1});return}
+ if(/élastique/.test(L)){S.layout="elastique";const tot=+(L.match(/piste de (\d+) m/)||[0,30])[1],at=+(L.match(/à (\d+) m de la ligne/)||[0,5])[1],xm=m=>x0+(x1-x0)*m/tot,n=3,T=sTrack(S,n,x0,x1);
+  sFinish(S,xm(tot),T.top,T.bot,"arrivée");sM(S,"elastique",xm(at),T.top-6,1,xm(at),T.bot+6);sDim(S,x0,T.bot+16,xm(at),T.bot+16,at+" m");sDim(S,x0,T.top-26,xm(tot),T.top-26,"piste de "+tot+" m",{oy:0,box:"#fffde7"});
+  if(gf)sTx(S,xm(at)+8,T.bot+40,`élastique à ${gf.g} G / ${gf.f} F du sol`,{s:13,a:"left"});sRunners(S,T,n,x0-18);for(let i=0;i<n;i++)sAr(S,"run",[[x0,T.ly(i)],[xm(at)-10,T.ly(i)],[xm(at)+30,T.ly(i)],[xm(tot)-14,T.ly(i)]]);return}
+ if(/handicap|décalés/.test(L)){S.layout="handicap";const n=P.unit||4,max=gf?gf.gv:50,xm=m=>x0+(x1-x0)*m/max,T=sTrack(S,n,x0,x1);fin(T,max,xm);for(let i=0;i<n;i++){const x=x0+i*14;sP(S,x,T.ly(i),"ex",{n:i+1,u:1,lab:"Coureur (départ décalé)"});sAr(S,"run",[[x+14,T.ly(i)],[xm(gf?gf.fv:max)-14,T.ly(i)]])}
+  sTx(S,240,T.bot+18,"décalage : 1 m par dixième de seconde",{s:13,box:"#fffde7"});return}
+ if(/navettes|aller-retour|2 × \d+ m/.test(L)){S.layout="navette";const d=+(L.match(/2 × (\d+) m/)||[0,20])[1],xm=m=>x0+(x1-x0-60)*m/d,T=sTrack(S,1,x0,x1,{lh:90,top:70});const y=T.ly(0);
+  sM(S,"plot",xm(d),y);sAr(S,"run",[[x0+4,y-20],[xm(d)-8,y-20]]);sAr(S,"back",[[xm(d)-8,y+20],[x0+4,y+20]],{lab:"Retour (aller-retour)"});sDim(S,x0,T.top-14,xm(d),T.top-14,"2 × "+d+" m");
+  const k=P.unit||4;sP(S,x0-18,y,"ex",{n:1,u:1,lab:"Coureur de l’équipe"});for(let j=1;j<k;j++)sP(S,x0-18+(j-1)*28,T.bot+24,"ex",{n:j+1,u:1});sTx(S,x0-18+(k-1)*28,T.bot+24,"← l’équipe attend, touche la main du suivant",{s:13,a:"left",n:1});return}
+ if(/zone d’élan de (\d+) m/.test(L)){S.layout="course-lancee";const e=+L.match(/zone d’élan de (\d+) m/)[1],c=+(L.match(/puis (\d+) m chronométrés/)||[0,30])[1],xm=m=>x0+(x1-x0)*m/(e+c),T=sTrack(S,2,x0,x1);
+  S.c.fillStyle="rgba(255,255,255,.25)";S.c.fillRect(x0,T.top,xm(e)-x0,T.bot-T.top);sFinish(S,xm(e),T.top,T.bot,"");sFinish(S,xm(e+c),T.top,T.bot,"");sDim(S,x0,T.top-16,xm(e),T.top-16,"élan "+e+" m");sDim(S,xm(e),T.top-16,xm(e+c),T.top-16,c+" m chronométrés");
+  sRunners(S,T,2,x0-18);for(let i=0;i<2;i++)sAr(S,"run",[[x0,T.ly(i)],[xm(e+c)-14,T.ly(i)]]);sP(S,xm(e),T.bot+18,"chr",{lab:"Chronométreur (départ / arrivée)"});sP(S,xm(e+c),T.bot+18,"chr");if(P.rep)sTx(S,200,T.bot+18,P.rep,{s:13});return}
+ if(/gammes|vagues/.test(L)){S.layout="gammes";const g=+(L.match(/sur (\d+) m/)||[0,30])[1],r=+(L.match(/puis (\d+) m de course/)||[0,0])[1],xm=m=>x0+(x1-x0)*m/(g+r),n=P.unit||4,T=sTrack(S,n,x0,x1);
+  sFinish(S,xm(g),T.top,T.bot,"");if(r)sFinish(S,xm(g+r),T.top,T.bot,"");sDim(S,x0,T.top-16,xm(g),T.top-16,"gammes "+g+" m");if(r)sDim(S,xm(g),T.top-16,xm(g+r),T.top-16,r+" m de course");
+  const G=["montées de genoux","jambes tendues","talons-fesses","foulées"];sRunners(S,T,n,x0-18,{u:1});for(let i=0;i<n;i++){sAr(S,"run",[[x0,T.ly(i)],[xm(g+r)-14,T.ly(i)]]);sTx(S,(x0+xm(g))/2,T.ly(i)-9,G[i%4],{s:11,n:1})}return}
+ if(/lattes/.test(L)){S.layout="lattes";const d=+(L.match(/sur (\d+) m/)||[0,30])[1],xm=m=>x0+(x1-x0)*m/d,T=sTrack(S,3,x0,x1);for(let m=2;m<d;m+=2.5)for(let i=0;i<3;i++)sM(S,"latte",xm(m),T.ly(i),1,T.lh-12);
+  sDim(S,x0,T.top-16,xm(d),T.top-16,"lattes sur "+d+" m");sRunners(S,T,3,x0-18);sAr(S,"run",[[x0,T.ly(0)],[xm(d),T.ly(0)]]);sTx(S,240,T.bot+18,"1 appui entre chaque latte"+(P.rep?" – "+P.rep:""),{s:13});return}
+ if(/équipes de (\d+)/.test(L)){S.layout="defi-equipes";const d=+(L.match(/un (\d+) m/)||L.match(/(\d+) m/)||[0,40])[1],xm=m=>x0+(x1-x0)*m/d,T=sTrack(S,2,x0,x1);sFinish(S,xm(d),T.top,T.bot,"arrivée");
+  sDim(S,x0,T.top-16,xm(d),T.top-16,d+" m");const k=P.unit||4;sP(S,x0-18,T.ly(0),"ex",{n:1,u:1,lab:"Coureur de l’équipe"});sAr(S,"run",[[x0,T.ly(0)],[xm(d)-14,T.ly(0)]]);for(let j=1;j<k;j++)sP(S,x0+10+j*30,T.bot+22,"ex",{n:j+1,u:1});
+  sTx(S,x0+10+k*30,T.bot+22,"en attente",{s:12,a:"left",n:1});sP(S,x0-30,T.bot+22,"sta");sP(S,xm(d)+18,T.ly(0),"chr");sP(S,xm(d)+18,T.ly(1),"jug",{lab:"Juge d’arrivée"});return}
+ if(/départs debout|piste de \d+ m/.test(L)){S.layout="departs";const n=P.lanes||4,max=gf?gf.gv:20,xm=m=>x0+(x1-x0)*m/max,T=sTrack(S,n,x0,x1);fin(T,max,xm);const pos=["debout","assis","accroupi"];
+  for(let i=0;i<n;i++){sP(S,x0-18,T.ly(i),"ex",{u:0,lab:"Coureur"});sAr(S,"run",[[x0,T.ly(i)],[xm(gf?gf.fv:max)-14,T.ly(i)]]);sTx(S,x0+50,T.ly(i)-10,pos[i%3],{s:12,n:1})}
+  sP(S,x0-30,T.bot+20,"sta",{lab:"Starter (signal)"});if(/chaque sens/.test(L))sTx(S,250,T.bot+20,`${n} couloirs dans chaque sens (retour en face)`,{s:13});return}
+ S.layout="piste";const n=P.lanes||P.unit||3,max=gf?gf.gv:+((P.dist[0]||"30 m").split(" ")[0].replace(",","."))||30,xm=m=>x0+(x1-x0)*m/max,T=sTrack(S,n,x0,x1);if(gf)fin(T,max,xm);else sFinish(S,x1,T.top,T.bot,P.dist[0]||"arrivée");
+ sRunners(S,T,n,x0-18);for(let i=0;i<n;i++)sAr(S,"run",[[x0,T.ly(i)],[x1-14,T.ly(i)]])}
+function sHaies(S,P,f,ti,isRef){const L=P.L,x0=60,x1=446;let tot=+(L.match(/(\d+) m haies/)||L.match(/sur (\d+) m/)||[0,0])[1];const sp=+(L.match(/espacées de (\d+) m/)||[0,0])[1],first=+(L.match(/1ère haie \((\d+) m\)/)||[0,0])[1];
+ let n=P.haies||(first?1:5);if(/1ère haie/.test(L))n=1;const fh=first||sp||(tot?tot/(n+1):10),gap=sp||(tot?(tot-fh-6)/Math.max(n-1,1):8);if(!tot)tot=Math.round(fh+gap*(n-1)+(first?4:sp));
+ const lanes=isRef?3:(/séries de|couloirs|équipes/.test(L)?(P.unit&&P.unit<=4?P.unit:4):2),xm=m=>x0+(x1-x0)*m/tot,T=sTrack(S,lanes,x0,x1,{bot:isRef?66:52});S.layout=first?"depart-1re-haie":/3 appuis/.test(L)?"rythme-3-appuis":"haies";
+ const hx=Array.from({length:n},(_,k)=>fh+k*gap);for(let i=0;i<lanes;i++){hx.forEach(m=>sM(S,"haie",xm(m),T.ly(i),1,T.lh-10));sP(S,x0-18,T.ly(i),"ex",{n:lanes>1?i+1:"",lab:"Coureur",u:P.unit&&i<P.unit?1:0})}
+ if(/3 appuis/.test(L))for(let k=0;k<n-1;k++)for(let q=1;q<=2;q++)sM(S,"plot",xm(hx[k]+gap*q/3),T.ly(0)+12,0.8);
+ const y=T.ly(0);sAr(S,"run",[[x0,y],[xm(hx[0])-10,y]]);sAr(S,"jmp",[[xm(hx[0])-10,y],[xm(hx[0]),y-24],[xm(hx[0])+12,y]],{curve:1,lab:"Franchissement"});if(n>1)sAr(S,"run",[[xm(hx[0])+12,y],[xm(hx[n-1])-10,y]]);
+ if(sp)sDim(S,xm(hx[0]),T.top-14,xm(hx[1]||hx[0]+sp),T.top-14,sp+" m");if(first){sDim(S,x0,T.top-14,xm(first),T.top-14,"1ère haie à "+first+" m");const ap=(L.match(/(\d+ ou \d+) appuis/)||[0,""])[1];if(ap)sTx(S,(x0+xm(first))/2,T.bot+18,ap+" appuis",{s:13})}
+ if(tot&&(/m haies|sur \d+ m/.test(L)))sFinish(S,x1,T.top,T.bot,/haies/.test(L.match(/\d+ m haies/)||"")?tot+" m haies":tot+" m");
+ if(/basses/.test(L))sTx(S,xm(hx[0]),T.bot+(first?36:18),"haies basses",{s:12,n:1});
+ if(P.roles.includes("sta"))sP(S,x0-30,T.bot+20,"sta");if(P.roles.includes("chr"))sP(S,x1+18,T.ly(0),"chr");if(P.roles.includes("jug"))sP(S,xm(hx[Math.floor(n/2)]),T.bot+20,"jug",{lab:/haies/.test(L.match(/juges? des haies/)||"")?"Juge des haies":"Juge"});
+ if(P.rep)sTx(S,330,T.bot+20,P.rep,{s:13});if(isRef)sRefStrip(S,P)}
+function sRelais(S,P,f,ti,isRef){const L=P.L,x0=40,x1=456;let m;
+ if((m=L.match(/(\d) × (\d+) m/))){const k=+m[1],d=+m[2],tot=k*d,xm=v=>x0+(x1-x0)*v/tot,T=sTrack(S,1,x0,x1,{lh:70,top:74,bot:isRef?70:56}),y=T.ly(0),zl=+(L.match(/zone de (\d+) m/)||[0,0])[1]||10;S.layout="relais-"+k+"x"+d;
+  for(let j=1;j<k;j++){S.c.fillStyle="rgba(255,235,59,.55)";S.c.fillRect(xm(j*d-zl/2),T.top,xm(zl)-x0,T.lh);sTx(S,xm(j*d),T.top-10,"zone",{s:12,n:1})}
+  const st=/handicap|décalés/.test(L);const uk=P.unit||k;for(let j=0;j<k;j++)sP(S,xm(j*d)+(j?8:12),y+(j%2?10:-10),"ex",{n:j%uk+1,u:P.unit&&j<P.unit?1:0,lab:"Relayeur"});sM(S,"temoin",x0+26,y-22);
+  for(let j=0;j<k;j++)sAr(S,"run",[[xm(j*d)+24,y+(j%2?10:-10)],[xm((j+1)*d)-12,y+(j%2?10:-10)]]);sDim(S,x0,T.top-28,x1,T.top-28,`${k} × ${d} m`,{box:"#fffde7"});sDim(S,xm(0),T.bot+14,xm(d),T.bot+14,d+" m");
+  if(/zone de (\d+) m/.test(L))sDim(S,xm(d-zl/2),T.bot+34,xm(d+zl/2),T.bot+34,"zone de "+zl+" m");if(st)sTx(S,300,T.bot+20,"départs décalés",{s:13});
+  if(P.roles.includes("jug"))sP(S,xm(d),T.bot+40,"jug",{lab:"Juge de zone"});if(P.roles.includes("chr"))sP(S,x1-6,T.bot+20,"chr");
+  if(isRef)sRefStrip(S,P);return}
+ const T=sTrack(S,1,x0,x1,{lh:80,top:80}),y=T.ly(0),zA=250,zB=360;S.c.fillStyle="rgba(255,235,59,.55)";S.c.fillRect(zA,T.top,zB-zA,T.lh);sTx(S,(zA+zB)/2,T.top-12,"zone de transmission",{s:13});
+ const don=[150,y+10],rec=[zA+30,y-10];sP(S,...don,"ex",{n:1,u:1,lab:"Donneur"});sP(S,...rec,"rec",{n:2,u:1,lab:"Receveur"});sM(S,"temoin",don[0]+16,don[1]+10);sAr(S,"run",[[don[0]+14,don[1]],[rec[0]+10,y+10]]);sAr(S,"run",[[rec[0]+14,rec[1]],[zB+60,rec[1]]]);
+ if(/marque/.test(L)){S.layout="marque-depart";const pm=(L.match(/à (\d+) pas/)||[0,6])[1];sM(S,"plot",zA-50,T.bot+10);sDim(S,zA-50,T.bot+28,rec[0],T.bot+28,`marque à ${pm} pas`);sTx(S,zA-50,T.top-12,"plot",{s:12,n:1})}
+ else if(/(\d+) m de zone chronométrée/.test(L)){S.layout="transmission-chrono";const d=+L.match(/(\d+) m de zone/)[1];sDim(S,zA-20,T.bot+16,zB+20,T.bot+16,d+" m chronométrés");sP(S,zA-20,T.bot+40,"chr");sP(S,zB+20,T.bot+40,"chr")}
+ else{S.layout="transmission";sTx(S,rec[0]-20,y-36,"« hop »",{s:15,col:"#c62828"})}if(P.rep)sTx(S,120,T.bot+40,P.rep,{s:13})}
+function sLongueur(S,P,f,ti,isRef){const L=P.L,c=S.c,H=S.H,cy=isRef?H/2-36:H/2,xp=330;sFill(S,"#cfe3c4");c.fillStyle="#c1553b";c.fillRect(10,cy-28,xp-10,56);sM(S,"fosse",xp+16,cy-62,0,124,124);sM(S,"planche",xp+6,cy,1,56);
+ const xm=m=>xp-m*25,J=[xp+6,cy];S.layout="longueur";const sau=(x)=>{sAr(S,"jmp",[[x,cy],[(x+xp+70)/2,cy-60],[xp+70,cy]],{curve:1})};sTx(S,xp+78,cy+74,"fosse",{s:12,n:1});
+ if(P.gf&&/distance de/.test(L)){S.layout="elan-accelere";const g=P.gf;sP(S,xm(g.gv)-14,cy,"ex",{lab:"Sauteur"});sM(S,"plot",xm(g.gv/2),cy-10);sDim(S,xm(g.gv),cy-46,xp,cy-46,g.g+" G");sDim(S,xm(g.fv),cy+46,xp,cy+46,g.f+" F");
+  sTx(S,xm(g.gv/2)+12,cy-22,"plot au milieu",{s:12,a:"left"});sAr(S,"run",[[xm(g.gv),cy],[xp-6,cy]],{lab:"Course d’élan accélérée"});sau(xp-6);return}
+ if(/ballons? sont suspendus|ballon suspendu|deux ballons/.test(L)){S.layout="ballon-suspendu";sM(S,"tremplin",xp-26,cy-8,0,22,16);const fx=xp+70;sM(S,"fil",fx,cy-80,1,fx,cy+80);sP(S,fx,cy-92,"aid",{n:1,u:1});sP(S,fx,cy+92,"aid",{n:2,u:1});
+  sM(S,"ballon",fx,cy-16);sM(S,"ballon",fx,cy+16);sP(S,60,cy,"ex",{lab:"Sauteur"});sAr(S,"run",[[74,cy],[xp-30,cy]]);sau(xp-6);sTx(S,fx-60,cy-74,"toucher à 2 mains",{s:12});return}
+ if(/élastique/.test(L)){S.layout="elastique";const g=P.gf,ex=xp+6+(g?g.gv:2)*28;sM(S,"elastique",ex,cy-74,1,ex,cy+74);sP(S,ex,cy-90,"aid",{n:1,u:1});sP(S,ex,cy+90,"aid",{n:2,u:1});if(g){sDim(S,xp+6,cy-44,ex,cy-44,g.g+" G",{s:13});sDim(S,xp+6,cy+44,xp+6+g.fv*28,cy+44,g.f+" F",{s:13})}
+  sP(S,60,cy,"ex",{lab:"Sauteur"});sAr(S,"run",[[74,cy],[xp-8,cy]]);sAr(S,"jmp",[[xp,cy],[ex,cy-70],[ex+40,cy]],{curve:1});return}
+ if(/zones?: a =|divisé en 3 zones|zone c/.test(L)){S.layout="zones-points";["A = 1 pt","B = 2 pts","C = 3 pts"].forEach((t,i)=>{c.strokeStyle="#b08b3a";c.lineWidth=2;c.beginPath();c.moveTo(xp+16+i*41,cy-62);c.lineTo(xp+16+i*41,cy+62);c.stroke();sTx(S,xp+36+i*41,cy-48+i*0,t.split(" ")[0],{s:14});});
+  sTx(S,xp+78,cy+76,"A/B/C = 1/2/3 pts",{s:12});sP(S,60,cy,"ex",{lab:"Sauteur"});sAr(S,"run",[[74,cy],[xp-6,cy]]);sau(xp-6);sP(S,xp+40,cy+100>H?cy+60:cy+96,"obs",{lab:"Observateur (juge, annonce le score)"});return}
+ if(/cerceau/.test(L)){S.layout="cerceau";sM(S,"cerceau",xp+80,cy,1.3);sP(S,170,cy,"ex",{lab:"Sauteur"});sAr(S,"run",[[184,cy],[xp-6,cy]],{lab:"Élan réduit"});sau(xp-6);sTx(S,xp+80,cy-30,"2 pieds",{s:12});return}
+ if(/lattes/.test(L)){S.layout="lattes";for(let k=0;k<4;k++)sM(S,"latte",xp-24-k*30,cy,1,50);sTx(S,xp-70,cy-40,"4 derniers appuis",{s:13});sP(S,60,cy,"ex",{lab:"Sauteur"});sAr(S,"run",[[74,cy],[xp-6,cy]]);sau(xp-6);return}
+ const ap=L.match(/(\d+)(?: à (\d+))? appuis/);if(ap){S.layout=/étalonn|mesurer son élan/.test(L)?"etalonnage":"elan-reduit";const na=+(ap[2]||ap[1]),x=Math.max(30,xp-na*20);for(let k=0;k<Math.min(na,16);k++){c.fillStyle="#fff";c.beginPath();c.arc(xp-12-k*((xp-12-x)/Math.max(na-1,1)),cy+(k%2?8:-8),3,0,7);c.fill()}
+  sDim(S,x,cy-44,xp,cy-44,ap[2]?`${ap[1]} à ${ap[2]} appuis`:`${ap[1]} appuis`);if(/marque|plot/.test(L))sM(S,"plot",x-6,cy+40);sP(S,x-16,cy,"ex",{lab:"Sauteur"});sau(xp-6);}
+ else{S.layout=/concours/.test(L)?"concours":"saut";sP(S,60,cy,"ex",{lab:"Sauteur"});sAr(S,"run",[[74,cy],[xp-6,cy]]);sau(xp-6)}
+ const ry=Math.min(H-18,cy+90);if(P.roles.includes("mes"))sP(S,xp+60,ry,"mes");if(P.roles.includes("obs"))sP(S,xp+100,ry,"obs");if(P.roles.includes("jug"))sP(S,xp-6,ry,"jug",{lab:/juge de planche/.test(L)?"Juge de planche":"Juge (appel, mesure)"});if(P.roles.includes("rat"))sP(S,xp+140,ry,"rat");
+ if(/équipes de (\d+)/.test(L)){S.layout="defi-equipes";const k=P.unit;for(let j=1;j<k;j++)sP(S,30+j*28,cy+56,"ex",{n:j+1,u:1});S.unit++;sTx(S,40,cy+80,"équipe en attente",{s:12,a:"left",n:1})}
+ if(P.unit===2&&!S.unit){if(!S.roles.obs&&!S.roles.mes)sP(S,xp-40,Math.min(H-18,cy+90),"obs",{lab:"Binôme observateur"});S.unit=2}
+ if(P.rep)sTx(S,16,18,P.rep,{s:13,a:"left",box:"#fff"});if(isRef)sRefStrip(S,P)}
+function sHauteur(S,P,f,ti,isRef){const L=P.L,c=S.c,H=S.H,yb=isRef?110:150;sFill(S,"#cfe3c4");c.fillStyle="#c1553b";c.fillRect(10,yb+12,320,H-yb-(isRef?70:14));
+ sM(S,"tapis",300,22,0,160,yb-40,"#3d7cc9");sTx(S,380,yb-10,"tapis de réception",{s:12,n:1});const el=/élastique/.test(L);if(el)sM(S,"elastique",300,yb,1,460,yb);else sM(S,"barre",300,yb,1,460,yb);
+ const ciseau=/ciseau/.test(L)||(/^(1|2|3)AC$/.test(f.niveau)&&!/rotation|dos/.test(L)),T0=[310,yb+18];let start;S.layout="hauteur";
+ const m=L.match(/(\d+) appuis droits, (\d+) appuis en courbe/);
+ if(m||/courbe|en j/.test(L)&&!ciseau){S.layout=m?"elan-en-J":"elan-courbe";const nd=m?+m[1]:3,nc=m?+m[2]:(/court/.test(L)?3:4),pts=[];const bot=H-(isRef?80:26);
+  for(let k=0;k<nd;k++)pts.push([60+k*34,bot-k*4]);for(let k=1;k<=nc;k++){const t=k/(nc+1)*Math.PI/2;pts.push([60+(nd-1)*34+90*Math.sin(t),bot-(nd-1)*4-(bot-T0[1]-10)*(1-Math.cos(t))])}
+  pts.forEach((p,k)=>sM(S,"plot",p[0],p[1]+14,0.8));start=pts[0];sP(S,start[0]-20,start[1],"ex",{lab:"Sauteur"});sAr(S,"run",[[start[0]-6,start[1]],...pts.slice(1),T0],{lab:"Élan (droit puis courbe)"});
+  if(m)sTx(S,140,bot+4>H-10?bot-30:bot+4,`${nd} appuis droits + ${nc} en courbe`,{s:13,box:"#fffde7"});sTx(S,T0[0]-30,T0[1]+12,"impulsion",{s:12})}
+ else{S.layout=ciseau?"ciseaux":"elan-oblique";start=[90,H-(isRef?90:40)];sP(S,start[0]-16,start[1],"ex",{lab:"Sauteur"});sAr(S,"run",[[start[0],start[1]],T0],{lab:"Élan oblique"});const a=L.match(/élan de (\d+ à \d+|\d+) appuis/);if(a)sTx(S,170,start[1]-34,"élan de "+a[1]+" appuis",{s:13,box:"#fffde7"})}
+ sAr(S,"jmp",[T0,[360,yb-40],[390,yb-60]],{curve:1,lab:ciseau?"Franchissement en ciseaux":"Franchissement dos à la barre"});
+ const hm=L.match(/(\d+) cm/);if(hm)sTx(S,470,yb+16,(el?"élastique à ":"barre : ")+hm[1]+" cm",{s:13,a:"right",box:"#fffde7"});if(/montée de barre/.test(L))sTx(S,470,yb+(hm?38:16),/de (\d+) cm/.test(L)?"montée de "+L.match(/de (\d+) cm/)[1]+" cm":"montée de barre",{s:13,a:"right"});
+ if(/rotation|dos à la barre/.test(L))sTx(S,380,40,"réception sur le dos",{s:12});if(/3 hauteurs croissantes/.test(L))sTx(S,470,yb+38,"3 hauteurs croissantes",{s:13,a:"right"});
+ const ry=Math.min(H-(isRef?74:18),yb+70);if(P.roles.includes("jug"))sP(S,440,ry,"jug");if(P.roles.includes("rem"))sP(S,470,yb-14,"rem");
+ if(/équipes de (\d+)/.test(L)){S.layout="defi-equipes";const k=P.unit;S.unit++;for(let j=1;j<k;j++)sP(S,30,30+j*26,"ex",{n:j+1,u:1,lab:"Sauteur"});sTx(S,48,30+k*26,"équipe",{s:12,a:"left",n:1})}
+ if(P.rep)sTx(S,16,18,P.rep,{s:13,a:"left",box:"#fff"});else if(/(\d) essais par hauteur/.test(L))sTx(S,200,yb+30,L.match(/(\d) essais par hauteur/)[0],{s:13});if(isRef)sRefStrip(S,P)}
+function sPoids(S,P,f,ti,isRef){const L=P.L,c=S.c,H=S.H,cx=70,cy=isRef?H/2-36:H/2,a=17.46*Math.PI/180,px=36;sFill(S,"#cfe3c4");c.strokeStyle="#fff";c.lineWidth=2.5;
+ c.beginPath();c.moveTo(cx,cy);c.lineTo(cx+420*Math.cos(a),cy-420*Math.sin(a));c.moveTo(cx,cy);c.lineTo(cx+420*Math.cos(a),cy+420*Math.sin(a));c.stroke();S.mat.secteur=1;
+ [4,6,8,10].forEach(m=>{c.strokeStyle="rgba(255,255,255,.8)";c.lineWidth=1.5;c.beginPath();c.arc(cx,cy,m*px,-a,a);c.stroke();sTx(S,cx+m*px+2,cy-m*px*Math.sin(a)-8,m+" m",{s:11,n:1,col:"#33691e"})});
+ const inC=/cercle|concours|mesurés|équipes|zones/.test(L)||isRef;if(inC)sM(S,"cercle",cx,cy,0,26);else{c.strokeStyle="#fff";c.setLineDash([5,4]);c.strokeRect(cx-26,cy-26,52,52);c.setLineDash([])}
+ const eng=/médecine-ball/.test(L)&&!/\bpoids\b/.test(L)?"medball":"poids",lan=[cx-6,cy],tgt=[cx+(/zones/.test(L)?6.5:7)*px,cy+10];S.layout="poids";
+ if(/zones de (\d+) cm/.test(L)){S.layout="contrat-zones";const z=+L.match(/zones de (\d+) cm/)[1];for(let m=5;m<=8.01;m+=z/100){c.strokeStyle="#f9a825";c.lineWidth=2;c.beginPath();c.arc(cx,cy,m*px,-a,a);c.stroke()}
+  c.save();c.fillStyle="rgba(255,235,59,.5)";c.beginPath();c.arc(cx,cy,6.5*px,-a,a);c.arc(cx,cy,7*px,a,-a,true);c.closePath();c.fill();c.restore();sTx(S,cx+6.75*px,cy+70,`zones de ${z} cm`,{s:13,box:"#fffde7"});sTx(S,cx+6.75*px,cy-70,"zone annoncée",{s:12})}
+ sP(S,...lan,"ex",{lab:"Lanceur"});sM(S,eng,lan[0]+10,lan[1]-12);if(eng==="medball"||/ou médecine-ball/.test(L))S.mat[/ou médecine-ball/.test(L)?"medball":eng]=1;
+ sAr(S,"thr",[[lan[0]+16,lan[1]-8],[(lan[0]+tgt[0])/2,cy-80],tgt],{curve:1});
+ if(/de face/.test(L)){S.layout="poussee-de-face";sTx(S,cx,cy+44,"de face, pieds écartés",{s:13,a:"left"})}else if(/de profil/.test(L)){S.layout="lancer-de-profil";sTx(S,cx-20,cy+44,"de profil, jambes fléchies",{s:13,a:"left"});c.strokeStyle="#c62828";c.lineWidth=2;c.beginPath();c.arc(lan[0],lan[1],20,Math.PI*.6,Math.PI*1.4);c.stroke()}
+ if(/vers l’avant et le haut/.test(L))sTx(S,(lan[0]+tgt[0])/2,cy-92,"vers l’avant et le haut",{s:12});
+ sTx(S,30,cy+(isRef?60:90),"attente derrière le cercle",{s:11,a:"left",n:1});
+ const ry=Math.min(H-(isRef?80:20),cy+96);if(P.roles.includes("jug")){if(/juges/.test(L)&&/cercle/.test(L)){sP(S,cx+10,cy+44,"jug",{n:1,lab:"Juge (sortie du cercle / mesure)"});sP(S,tgt[0]+6,cy+64,"jug",{n:2})}else sP(S,tgt[0]+6,cy+64,"jug",{lab:/juge de chute/.test(L)?"Juge de chute":"Juge"})}if(P.roles.includes("mes"))sP(S,tgt[0]+40,cy+64,"mes");
+ if(P.roles.includes("sec"))sP(S,cx+40,ry,"sec");if(P.roles.includes("obs"))sP(S,cx+70,cy+60,"obs");
+ if(/équipes de (\d+)/.test(L)){S.layout="defi-equipes";const k=P.unit;for(let j=1;j<k;j++)sP(S,22+(j-1)*28,cy-58,"ex",{n:j+1,u:1});S.unit++;sTx(S,10,cy-82,`équipe de ${k}`,{s:12,a:"left",n:1})}
+ if(P.rep)sTx(S,330,isRef?20:H-14,P.rep,{s:13,box:"#fff"});if(isRef)sRefStrip(S,P)}
+function sEndurance(S,P,f,ti,isRef){const L=P.L,c=S.c,H=S.H,cy=isRef?H/2-34:H/2,ry=isRef?(H-120)/2:H/2-34,rx=200;sFill(S,"#cfe3c4");c.strokeStyle="#c1553b";c.lineWidth=22;c.beginPath();c.ellipse(240,cy,rx,ry,0,0,7);c.stroke();
+ c.strokeStyle="#fff";c.lineWidth=1.2;c.beginPath();c.ellipse(240,cy,rx+11,ry+11,0,0,7);c.stroke();c.beginPath();c.ellipse(240,cy,rx-11,ry-11,0,0,7);c.stroke();S.layout="ovale";
+ if(/plots|balisée/.test(L))for(let j=0;j<16;j++){const t=j*Math.PI/8;sM(S,"plot",240+(rx+16)*Math.cos(t),cy+(ry+16)*Math.sin(t),0.8)}
+ const m=L.match(/tous les (\d+) m/);if(m)sTx(S,240,cy-ry+30,`plot tous les ${m[1]} m`,{s:13,box:"#fffde7"});
+ const run=(t,n,lab,u)=>{const x=240+rx*Math.cos(t),y=cy+ry*Math.sin(t);sP(S,x,y,"ex",{n,lab,u});const t2=t+0.5;sAr(S,"run",[[x,y],[240+rx*Math.cos(t+.25),cy+ry*Math.sin(t+.25)],[240+rx*Math.cos(t2),cy+ry*Math.sin(t2)]],{curve:1})};
+ if(/côte à côte/.test(L)){S.layout="binomes-allure";run(0.3,1,"Coureur (binôme)",1);sP(S,240+(rx-22)*Math.cos(0.3),cy+(ry-22)*Math.sin(0.3),"ex",{n:2,u:1})}
+ else if(/équipes de (\d+)/.test(L)){S.layout="relais-endurance";run(0.3,1,"Relayeur",1);for(let j=2;j<=P.unit;j++)sP(S,190+j*24,cy+ry-30,"ex",{n:j,u:1});sTx(S,224,cy+ry-30,"zone de relais",{s:12,a:"right",n:1})}
+ else if(/par binômes|binôme/.test(L)){S.layout="binome-compteur";run(0.3,"",/l’un court/.test(L)?"Coureur":"Coureur",1);sP(S,240,cy+20,"cpt",{u:1,lab:"Compteur (binôme)"})}
+ else run(0.3,"","Coureur");
+ const d=P.dur||"";sTx(S,240,cy-6,d?(L.match(new RegExp("(\\d+ × )?"+d.replace(" ","\\s")))||[d])[0]:"",{s:16,box:"#fff"});
+ if(P.roles.includes("obs"))sP(S,200,cy+24,"obs");if(P.roles.includes("chr"))sP(S,280,cy+24,"chr");if(P.roles.includes("cpt")&&!S.roles.cpt)sP(S,240,cy+30,"cpt");if(isRef)sRefStrip(S,P)}
+/* ---------- GYMNASTIQUE ---------- */
+function sGym(S,P,f,ti,isRef,ctx){const L=P.L,c=S.c,H=S.H;sFill(S,"#f2efe6");const name=ti.replace(/^(Atelier \d+|Test bilan|Situation \d+)\s*:\s*/i,"").replace(/\s*\([^)]*\)/g,"").trim();
+ const has=k=>P.mat.includes(k)||ctx.prev&&/même installation/.test(L)&&ctx.prev.includes(k);const cyy=H/2+10;let lay="tapis";
+ const jury=/jury|juges/.test(L)||/jury/.test(ti.toLowerCase()),compo=/fiche de composition/.test(L+" "+ti.toLowerCase());
+ const pre=P.t.split(/ : /)[0];
+ if(P.t.includes(" : ")&&pre.includes(";")&&!jury){lay="stations";const els=pre.split(";").map(x=>x.trim()).slice(0,4),n=els.length,w=(SC_W-20)/n;
+  els.forEach((e,k)=>{const x0=10+k*w,cx=x0+w/2,l=e.toLowerCase();if(k){c.strokeStyle="rgba(0,0,0,.25)";c.setLineDash([4,4]);c.beginPath();c.moveTo(x0,40);c.lineTo(x0,H-40);c.stroke();c.setLineDash([])}
+   if(/caisson/.test(l)){sM(S,"tremplin",x0+8,cyy-4,0,18,16);sM(S,"caisson",x0+30,cyy-20,0,w*0.32,34);sM(S,"tapis",x0+34+w*0.32,cyy-14,0,w*0.42,30,"#1d4f8a")}
+   else if(/barre/.test(l)){sM(S,"tapis",x0+12,cyy+6,0,w-24,26,"#7fb2e5");sM(S,"barrefixe",x0+20,cyy-10,0,w-40)}
+   else if(/poutre/.test(l)){sM(S,"tapis",x0+8,cyy-24,0,w-16,48,"#7fb2e5");sM(S,"poutre",x0+14,cyy,0,w-28)}
+   else{sM(S,"tapis",x0+8,cyy-16,0,w-16,32,/plan incliné/.test(l)?"#f5a623":"#3d7cc9");if(/atr|mur/.test(l))sM(S,"mur",x0+w-14,cyy-30,0,8,60)}
+   sAr(S,"elem",[[cx-w*0.3,cyy],[cx,cyy-50],[cx+w*0.3,cyy]],{curve:1});const words=e.replace(/\s*\(.*?\)/g,"").split(/\s+/);let l1="",l2="",full=false;words.forEach(wd=>{if(!full&&(l1+" "+wd).trim().length<=Math.floor(w/8))l1=(l1+" "+wd).trim();else{full=true;l2=(l2+" "+wd).trim()}});
+   sTx(S,cx,cyy-80,l1,{s:12,max:w-6});if(l2)sTx(S,cx,cyy-64,l2,{s:12,max:w-6});sP(S,x0+16,cyy+40,"gym",{n:"",lab:"Gymnaste"})});
+  sTx(S,240,cyy+62,"1 poste par élément",{s:12,n:1});sP(S,330,cyy+40,"par")}
+ else if(false){}
+ else if(has("caisson")&&["caisson","poutre","barrefixe"].filter(has).length<2){lay="saut-caisson";c.fillStyle="#e0d6c2";c.fillRect(20,cyy-10,170,30);sTx(S,100,cyy+30,"zone d’élan",{s:12,n:1});sM(S,"tremplin",192,cyy-6,0,30,26);sM(S,"caisson",232,cyy-30,0,90,50);sM(S,"tapis",330,cyy-30,0,130,60,"#1d4f8a");
+  sTx(S,276,cyy-42,"caisson",{s:12,n:1});sTx(S,396,cyy-42,"tapis épais",{s:12,n:1});sP(S,40,cyy+5,"gym");sAr(S,"run",[[54,cyy+5],[194,cyy+5]]);sAr(S,"elem",[[214,cyy],[276,cyy-80],[380,cyy]],{curve:1});sP(S,330,cyy+56,"par")}
+ else if(has("poutre")&&["caisson","poutre","barrefixe"].filter(has).length<2){lay="poutre";sM(S,"tapis",40,cyy-46,0,400,30,"#7fb2e5");sM(S,"tapis",40,cyy+16,0,400,30,"#7fb2e5");sM(S,"poutre",60,cyy,0,360);sTx(S,240,cyy-58,"poutre basse + tapis de chaque côté",{s:12});
+  sP(S,70,cyy,"gym");sAr(S,"run",[[86,cyy],[260,cyy]]);sAr(S,"elem",[[260,cyy-12],[300,cyy-40],[340,cyy-12]],{curve:1});sP(S,300,cyy+40,"par")}
+ else if(has("barrefixe")&&["caisson","poutre","barrefixe"].filter(has).length<2){lay="barre-fixe";sM(S,"tapis",150,cyy+10,0,200,50,"#7fb2e5");sM(S,"barrefixe",160,cyy-10,0,180);sTx(S,250,cyy-34,"barre fixe basse",{s:12});sTx(S,250,cyy+70,"tapis sous la barre",{s:12,n:1});
+  sP(S,230,cyy+30,"gym");sAr(S,"elem",[[230,cyy+16],[260,cyy-60],[290,cyy+10]],{curve:1});sP(S,330,cyy+30,"par")}
+ else if(jury||compo){lay=jury?"jury":"composition";sM(S,"tapis",40,40,0,400,110,"#7fb2e5");sTx(S,240,32,"praticable",{s:12,n:1});sP(S,90,95,"gym");sAr(S,"elem",[[106,95],[240,60],[390,95]],{curve:1,lab:"Enchaînement"});
+  if(jury){const m=L.match(/(\d) juges? d’exécution, (\d) juges? de difficulté/);const ne=m?+m[1]:2,nd=m?+m[2]:1;c.fillStyle="#b08b3a";c.fillRect(120,H-92,240,14);for(let j=0;j<ne+nd;j++)sP(S,150+j*60,H-104,"jug",{n:j+1,lab:"Juge"});sTx(S,240,H-68,`${ne} juges d’exécution + ${nd} de difficulté`,{s:12,n:1})}
+  else{sP(S,180,H-90,"ex",{n:1,u:1,lab:"Binôme (fiche de composition)"});sP(S,210,H-90,"ex",{n:2,u:1});sTx(S,300,H-90,"fiche de composition",{s:13,box:"#fff"})}
+  if(P.roles.includes("par"))sP(S,250,130,"par");if(/trois groupes tournent/.test(L))sRefStrip(S,P,[["gym","gymnastes"],["jug","juges"],[["par","org"],"pareurs / organisateurs"]])}
+ else{lay=has("mur")?"tapis-mur":has("planincl")?"plan-incline":/zone d’élan/.test(L)?"zone-elan":"longueur-tapis";const tW=has("mur")?380:420;sM(S,"tapis",30,cyy-30,0,tW,60,/épais/.test(L)?"#1d4f8a":"#3d7cc9");
+  if(has("mur"))sM(S,"mur",30+tW+4,cyy-60,0,12,120);if(has("ligne"))sM(S,"ligne",40,cyy,1,30+tW-10);if(has("planincl"))sM(S,"planincl",30,cyy-24,0,80,48);if(/repère visuel/.test(L)){c.fillStyle="#d1342f";c.fillRect(30+tW+6,cyy-80,10,10);sTx(S,30+tW-10,cyy-86,"repère visuel",{s:12,a:"right"})}
+  if(/zone d’élan/.test(L)){c.fillStyle="#e0d6c2";c.fillRect(30,cyy-10,90,20);sTx(S,74,cyy+40,"zone d’élan balisée",{s:12,n:1})}
+  const els=gymEls(P,name);
+  const n=els.length,xs=els.map((_,k)=>60+(tW-40)*(k+.5)/n);sP(S,44,cyy+44,"gym");sAr(S,"run",[[58,cyy+40],[xs[0]-20,cyy+6]]);
+  els.forEach((e,k)=>{const le=e.toLowerCase();if(/caisson/.test(le))sM(S,"caisson",xs[k],cyy-6,1,40,22);else if(/poutre/.test(le))sM(S,"poutre",xs[k],cyy-4,1,60);else if(/barre/.test(le))sM(S,"barrefixe",xs[k],cyy-14,1,50);sAr(S,"elem",[[xs[k]-26,cyy],[xs[k],cyy-46],[xs[k]+26,cyy]],{curve:1});sTx(S,xs[k],cyy-60-(n>2?(k%2)*18:0),e,{s:12,max:n>2?(tW-40)/n*1.8:(tW-40)/n})});
+  if(n>1)for(let k=0;k<n-1;k++)sTx(S,(xs[k]+xs[k+1])/2,cyy+18,"+",{s:16,col:"#c62828"});sP(S,xs[n-1],cyy+50,"par")}
+ S.layout="gym-"+lay;if(P.roles.includes("obs")||/observateur|binôme|fiche/.test(L)||!jury)sP(S,440,H-26,"obs",{lab:"Observateur (binôme)"});
+ if(!jury&&!compo){sP(S,20,H-26,"gym",{n:"",lab:"Gymnaste"});sP(S,46,H-26,"gym");sTx(S,62,H-26,"file d’attente",{s:11,a:"left",n:1})}
+ const rep=P.rep||(L.match(/\d+ essais par élément/)||[""])[0];if(rep)sTx(S,240,20,rep+(/par élève/.test(L)?" par élève":""),{s:13,box:"#fff"});
+ if(ctx.rot&&!isRef){sAr(S,"rot",[[380,H-14],[470,H-14]],{lab:"Rotation G1 ↔ G2"});sTx(S,376,H-14,`G${ctx.i+1} → atelier ${ctx.i?1:2} (${ctx.rot} min)`,{s:12,a:"right",box:"#e8f5e9"})}}
+/* ---------- ÉCHAUFFEMENT (phase initiale) et RETOUR AU CALME ---------- */
+function sIni(S,f,bank,txt){const fam=bank.fam,c=S.c,H=S.H,sp0=f.aps==="Basketball"?"basket":f.aps==="Football"?"foot":"hand";const P=schParse(txt,f.aps);S.layout="echauffement";
+ sFill(S,fam===GY?"#f2efe6":fam===SC?({hand:"#9fc5e8",basket:"#e9c08b",foot:"#5aa05a"})[sp0]:fam===RV?"#f0b878":"#cfe3c4");
+ let items=String(txt).replace(/^.*?Échauffement spécifique\s*:\s*/s,"").replace(/^Par \d+\s*:\s*/,"").replace(/^Éducatifs\s*:\s*/,"").split(/\s*;\s*|,\s(?=[a-zé])/).map(x=>x.trim().replace(/\.$/,"")).filter(Boolean);
+ if(fam!==GY)items=String(txt).replace(/^.*?Échauffement spécifique\s*:\s*/s,"").replace(/^Par \d+\s*:\s*/,"").split(/\s*;\s*/).map(x=>x.trim().replace(/\.$/,"")).filter(Boolean);
+ items=items.slice(0,fam===GY?5:4);const n=items.length||1,w=SC_W/n;const pairs=/^par (\d+)|par 2/i.test(String(txt).replace(/^.*?Échauffement spécifique\s*:\s*/s,""));
+ items.forEach((it,k)=>{const x0=k*w,cx=x0+w/2,l=it.toLowerCase(),cy=H/2+14;if(k){c.strokeStyle="rgba(0,0,0,.25)";c.setLineDash([4,4]);c.beginPath();c.moveTo(x0,24);c.lineTo(x0,H-8);c.stroke();c.setLineDash([])}
+  const head=it.replace(/\s*\(.*?\)/g,"").split(/\s+/).slice(0,5).join(" ");sTx(S,cx,16,head,{s:12,max:w-6});const dm=it.match(/(\d+(?:,\d+)?) m\b/);
+  if(fam===GY){const k2=/plan incliné/.test(l)?"planincl":/mur/.test(l)?"mur":/banc/.test(l)?"banc":/plinth/.test(l)?"plinth":/espalier/.test(l)?"espalier":/ligne/.test(l)?"ligne":"tapis";
+   sM(S,"tapis",x0+8,cy-6,0,w-16,26,"#7fb2e5");if(k2!=="tapis")sM(S,k2,cx,cy-20,1,40,18);sP(S,cx-14,cy+40,"gym");sAr(S,"elem",[[cx-24,cy],[cx,cy-34],[cx+24,cy]],{curve:1});if(/parade/.test(l))sP(S,cx+16,cy+40,"par");return}
+  if(/^mobilisation|gainage/.test(l)){sP(S,cx,cy+4,"ex",{lab:"Élève"});[[-1,0],[1,0]].forEach(([d])=>{c.strokeStyle="#7b1fa2";c.lineWidth=2.4;c.beginPath();c.arc(cx+d*30,cy+4,13,0,Math.PI*1.6);c.stroke()});sTx(S,cx,cy+40,"sur place",{s:11,n:1})}
+  else if(/slalom|entre plots|dribble|conduite/.test(l)){for(let j=0;j<4;j++)sM(S,"plot",x0+20+j*(w-40)/3,cy+(j%2?14:-14));sP(S,x0+14,cy+40,"ex",{lab:"Élève"});sM(S,"ballon",x0+28,cy+48);sAr(S,"drib",[[x0+16,cy+24],[x0+w-12,cy-10]])}
+  else if(/tirs?\b|mini-but/.test(l)){const gx=x0+w-14;if(fam===SC){if(sp0==="basket")sM(S,"panier",gx-6,cy,1,1);else sM(S,"but",gx,cy,1,30,1)}sP(S,x0+24,cy+30,"ex");sM(S,"ballon",x0+38,cy+38);sAr(S,"ball",[[x0+38,cy+24],[gx-10,cy]]);
+   if(/sans gardien/.test(l))sTx(S,cx,H-12,"sans gardien",{s:11,n:1})}
+  else if(/passes?|touches|manchettes|médecine-ball|lancers/.test(l)){const a=[cx-w*0.3,cy],b=[cx+w*0.3,cy],uu=pairs&&!S.unit?1:0;sP(S,...a,"ex",{n:1,u:uu,lab:"Élève (par 2)"});sP(S,...b,"ex",{n:2,u:uu});if(/médecine-ball/.test(l))sM(S,"medball",a[0]+14,a[1]-14);else sM(S,"ballon",a[0]+14,a[1]-14);
+   sAr(S,"ball",[[a[0]+14,a[1]-6],[cx,cy-34],[b[0]-14,b[1]-6]],{curve:1});sAr(S,"ball",[[b[0]-14,b[1]+8],[cx,cy+30],[a[0]+14,a[1]+8]],{curve:1});if(/filet/.test(l))sM(S,"filet",cx,cy,1,60);
+   const d=dm||(P.t.match(/à (\d+) m/));if(d)sDim(S,a[0],cy+44,b[0],cy+44,d[1]+" m",{s:12})}
+  else if(/témoin|en file/.test(l)){const nf=P.unit||4;for(let j=0;j<nf;j++)sP(S,x0+20+j*(w-40)/Math.max(nf-1,1),cy,"ex",{n:j+1,u:!S.unit||j?1:0,lab:"Élève (en file)"});sM(S,"temoin",x0+34,cy-16);sAr(S,"run",[[x0+16,cy+24],[x0+w-12,cy+24]])}
+  else if(/courbe|plots/.test(l)){const pts=Array.from({length:5},(_,j)=>{const t=Math.PI*(1-j/4);return[cx+w*0.32*Math.cos(t),cy+10-40*Math.sin(t)]});pts.forEach(p=>sM(S,"plot",p[0],p[1]));sP(S,pts[0][0],cy+36,"ex");
+   sAr(S,"run",[[pts[0][0],cy+20],[cx,cy-56],[pts[4][0],cy+20]],{curve:1})}
+  else if(/saut|impulsion|cloche|bondissant/.test(l)&&!/foulées/.test(l)){sP(S,x0+18,cy+30,"ex");for(let j=0;j<3;j++){const xa=x0+30+j*(w-50)/3;sAr(S,"jmp",[[xa,cy+30],[xa+(w-50)/6,cy-10],[xa+(w-50)/3,cy+30]],{curve:1,lab:"Saut / impulsion"})}}
+  else{c.fillStyle="#c1553b";c.fillRect(x0+6,cy-18,w-12,36);c.strokeStyle="#fff";c.lineWidth=1.5;c.strokeRect(x0+6,cy-18,w-12,36);sP(S,x0+18,cy,"ex",{lab:"Élève"});if(/haie/.test(l))[0.45,0.75].forEach(q=>sM(S,"haie",x0+w*q,cy,1,32));sAr(S,"run",[[x0+32,cy],[x0+w-10,cy]]);
+   if(dm)sDim(S,x0+10,cy+32,x0+w-10,cy+32,dm[1]+" m",{s:12});else{const t=it.match(/(\d+) min/);if(t)sTx(S,cx,cy+34,t[0],{s:12})}}});
+ S.P=P;sEnsure(S,P)}
+function sFin(S,f,txt){const c=S.c,H=S.H;sFill(S,"#eef2f6");S.layout="retour-au-calme";const cx=150,cy=H/2+8,A=sRing(cx,cy,84,H/2-30,8);
+ if(/marche/i.test(txt))sAr(S,"run",[[cx+92,cy-20],[cx+100,cy+40],[cx+60,cy+70]],{curve:1,lab:"Marche, respiration"});A.forEach((p,j)=>sP(S,p[0],p[1],"ex",{lab:"Élève"}));sP(S,cx,cy,"ens");
+ const et=(txt.match(/étirements\s*:\s*([^.\n/]+)/)||[0,""])[1];sTx(S,cx,18,"étirements en cercle",{s:13});if(et)sTx(S,355,cy-34,et.length>34?et.slice(0,33)+"…":et,{s:12,n:1});
+ if(/bilan/i.test(txt))sTx(S,355,cy-4,"bilan : questions / réponses",{s:13,box:"#fff"});if(/prochaine séance/.test(txt))sTx(S,355,cy+26,"annonce de la prochaine séance",{s:12,n:1})}
+/* ---------- assemblage avec légende ---------- */
+function sLegendItems(list){const R={},M={},A={};list.forEach(S=>{Object.entries(S.roles).forEach(([k,v])=>{(R[k]=R[k]||[]).includes(v)||R[k].push(v)});Object.keys(S.mat).forEach(k=>M[k]=1);Object.entries(S.arr).forEach(([k,v])=>{(A[k]=A[k]||[]).includes(v)||A[k].push(v)})});
+ const dd=v=>v.filter(a=>!v.some(b=>b!==a&&b.startsWith(a))),its=[];Object.entries(R).forEach(([k,v])=>its.push({t:"r",k,l:dd(v).slice(0,2).join(" / ")}));Object.keys(M).forEach(k=>its.push({t:"m",k,l:SM[k]}));Object.entries(A).forEach(([k,v])=>its.push({t:"a",k,l:dd(v).slice(0,2).join(" / ")}));return its}
+function sCompose(panels){const HL=24,G=6,its=sLegendItems(panels.map(p=>p.S)),tmp=document.createElement("canvas").getContext("2d");tmp.font="15px Arial,sans-serif";
+ let x=76,rows=1;const pos=its.map(it=>{const w=(it.t==="a"?40:28)+tmp.measureText(it.l).width+14;if(x+w>SC_W-6){rows++;x=8}const p=[x,rows];x+=w;return p});const LG=its.length?8+rows*23:0;
+ const H=panels.reduce((s,p)=>s+HL+p.S.H,0)+(panels.length-1)*G+(LG?G+LG:0),cv=document.createElement("canvas");cv.width=SC_W;cv.height=H;const c=cv.getContext("2d");c.fillStyle="#fff";c.fillRect(0,0,SC_W,H);
+ let y=0;panels.forEach(p=>{c.fillStyle="#1f4e79";c.fillRect(0,y,SC_W,HL);c.fillStyle="#fff";c.font="bold 16px Arial,sans-serif";c.textBaseline="middle";c.textAlign="left";c.fillText(p.label,6,y+HL/2+1,SC_W-12);c.drawImage(p.S.cv,0,y+HL);y+=HL+p.S.H+G});
+ if(LG){const oy=H-LG;c.strokeStyle="#9aa4b1";c.lineWidth=1.5;c.strokeRect(1,oy+1,SC_W-2,LG-2);c.fillStyle="#1f4e79";c.font="bold 15px Arial";c.textBaseline="middle";c.fillText("Légende",6,oy+15);
+  its.forEach((it,i)=>{const[px,r]=pos[i],yy=oy+15+(r-1)*23;c.save();if(it.t==="r"){const R=SR[it.k];c.fillStyle=R[1];c.strokeStyle="#fff";c.lineWidth=1.5;c.beginPath();if(it.k==="ens")c.rect(px,yy-8,24,16);else c.arc(px+10,yy,9.5,0,7);c.fill();c.stroke();c.fillStyle="#fff";c.font=`bold ${R[0].length>1?9:11}px Arial`;c.textAlign="center";c.fillText(R[0],px+(it.k==="ens"?12:10),yy+.5)}
+   else if(it.t==="m"){SMD[it.k](c,px+11,yy,0.9)}else{const A=SA[it.k];c.strokeStyle=A[1];c.lineWidth=Math.min(A[3],3);c.setLineDash(A[2]||[]);c.beginPath();if(it.k==="drib"){for(let d=0;d<=26;d+=2)c.lineTo(px+d,yy+Math.sin(d/4)*3)}else{c.moveTo(px,yy);c.lineTo(px+28,yy)}c.stroke();c.setLineDash([]);sHead(c,px+20,yy,px+32,yy,A[1],9)}
+   c.restore();c.fillStyle="#222";c.font="15px Arial,sans-serif";c.textAlign="left";c.fillText(it.l,px+(it.t==="a"?38:26),yy+.5)})}
+ return{url:cv.toDataURL("image/jpeg",0.88),h:H,legend:its,step:HL+(panels[0]?panels[0].S.H:0)+G}}
+const SCH_SPECS=new WeakMap();
+function sSpec(S,P,title,src){return{title,layout:S.layout,labels:S.labels.slice(),roles:Object.keys(S.roles),mat:Object.keys(S.mat),arr:Object.keys(S.arr),counts:Object.assign({},S.counts),unit:S.unit,fb:S.fb.slice(),src,P,vsDrawn:S.vsDrawn}}
+function schemaSit(f,bank,x,i,ctx){const fam=bank.fam,isRef=/^Situation de référence/.test(x.titre),ti=x.titre||"",P=schParse(x.conditions,f.aps),S=sNew(ti,fam===GY?224:260);f._effN=(parseInt(f.effG)||0)+(parseInt(f.effF)||0)||32;try{f._obj=objSentence(f)}catch(e){f._obj=""}
+ if(fam===SC)sSC(S,P,f,ti,isRef);else if(fam===RV)sRV(S,P,f,ti,isRef);else if(fam===GY)sGym(S,P,f,ti,isRef,ctx);
+ else{const a=f.aps;(a==="Course de haies"?sHaies:a==="Relais"?sRelais:a==="Saut en longueur"?sLongueur:a==="Saut en hauteur"?sHauteur:a==="Lancer de poids"?sPoids:a==="Course d'endurance"?sEndurance:sVitesse)(S,P,f,ti,isRef)}
+ delete f._effN;delete f._obj;sEnsure(S,P);return S}
+function schemaApply(f,bank){const P=f.phases,fd=P.fond,sits=fd.situations.filter(x=>(x.conditions||"").trim()),rot=((fd.consOrga||"").match(/toutes les (\d+(?:[.,]\d+)?) min/)||[0,""])[1];
+ const Ss=[];let prev=null;sits.forEach((x,i)=>{const S=schemaSit(f,bank,x,i,{prev,rot:bank.fam===GY?rot:"",i});prev=schParse(x.conditions,f.aps).mat.concat(prev&&/même installation/i.test(x.conditions)?prev:[]);Ss.push(S)});
+ const lab=(x,i)=>/^(Atelier|Test bilan)\b/.test(x.titre)?x.titre:`Situation ${i+1} : ${x.titre}`;
+ const C=sCompose(Ss.map((S,i)=>({S,label:lab(sits[i],i)})));fd.schema=C.url;fd.schemaH=C.h;fd.schemaStep=C.step;fd.sketch=null;
+ const Si=sNew("Échauffement",150);sIni(Si,f,bank,P.ini.contenu||"");const Ci=sCompose([{S:Si,label:"Échauffement spécifique"}]);P.ini.schema=Ci.url;P.ini.schemaH=Ci.h;P.ini.schemaStep=0;P.ini.sketch=null;
+ const Sf=sNew("Retour au calme",150);sFin(Sf,f,P.fin.contenu||"");const Cf=sCompose([{S:Sf,label:"Retour au calme – bilan"}]);P.fin.schema=Cf.url;P.fin.schemaH=Cf.h;P.fin.schemaStep=0;P.fin.sketch=null;
+ SCH_SPECS.set(f,{fond:Ss.map((S,i)=>sSpec(S,schParse(sits[i].conditions,f.aps),lab(sits[i],i),sits[i].conditions)),ini:sSpec(Si,Si.P,"Échauffement",P.ini.contenu),fin:sSpec(Sf,schParse(P.fin.contenu,f.aps),"Retour au calme",P.fin.contenu),
+  legend:{fond:C.legend,ini:Ci.legend,fin:Cf.legend}})}
+/* ---------- contrôle de cohérence schéma ↔ texte ---------- */
+function schCheck(f){const R=SCH_SPECS.get(f),out=[];if(!R)return["schéma absent"];const fd=f.phases.fond,sits=fd.situations.filter(x=>(x.conditions||"").trim());
+ if(R.fond.length!==sits.length)out.push("nombre de vignettes ≠ nombre de situations");
+ const chk=(sp,leg,where)=>{const P=sp.P,lt=sp.labels.join(" | ");
+  if(sp.fb.length)out.push(`${where} : éléments ajoutés hors gabarit (${sp.fb.join(", ")})`);
+  P.dist.forEach(d=>{if(!lt.includes(d))out.push(`${where} : distance « ${d} » non étiquetée`)});
+  P.roles.forEach(r=>{if(!sp.roles.includes(r))out.push(`${where} : rôle « ${SR[r][2]} » non dessiné`)});
+  P.mat.forEach(m=>{if(!sp.mat.includes(m))out.push(`${where} : matériel « ${SM[m]} » non dessiné`)});
+  if(P.vs){const d=sp.vsDrawn||[sp.counts.att||0,sp.counts.def||0];if(d[0]!==P.vs[0]||d[1]!==P.vs[1])out.push(`${where} : ${P.vs[0]} contre ${P.vs[1]} annoncé, ${d[0]} contre ${d[1]} dessiné`)}
+  if(P.unit&&sp.unit!==P.unit)out.push(`${where} : groupe de ${P.unit} annoncé, ${sp.unit} élèves dessinés`);
+  if(P.def&&!P.vs&&(sp.counts.def||0)!==P.def)out.push(`${where} : ${P.def} défenseur(s) annoncé(s), ${sp.counts.def||0} dessiné(s)`);
+  const keys=new Set(leg.map(it=>it.t+":"+it.k));sp.roles.forEach(r=>{if(!keys.has("r:"+r))out.push(`${where} : rôle ${r} absent de la légende`)});sp.mat.forEach(m=>{if(!keys.has("m:"+m))out.push(`${where} : matériel ${m} absent de la légende`)});sp.arr.forEach(a=>{if(!keys.has("a:"+a))out.push(`${where} : flèche ${a} absente de la légende`)})};
+ R.fond.forEach((sp,i)=>{const x=sits[i];if(!x)return;if(sp.src!==x.conditions)out.push(`S${i+1} : schéma désynchronisé du texte`);if(!sp.title.includes(x.titre))out.push(`S${i+1} : titre du schéma ≠ titre de la situation`);chk(sp,R.legend.fond,"S"+(i+1))});
+ if(R.fond.length>1){const sig=sp=>sp.layout+"|"+sp.labels.join("|")+"|"+JSON.stringify(sp.counts);if(sig(R.fond[0])===sig(R.fond[1]))out.push("schéma identique pour les deux situations")}
+ chk(R.ini,R.legend.ini,"échauffement");if(!R.fin.labels.length)out.push("retour au calme : schéma vide");
+ return out}
+function gymEls(P,name){const t=P.t;let m=t.match(/enchaîner (.+?)(?: sans arrêt| ;| et la position|$)/i),a;
+ if(m){a=m[1].includes(" : ")?m[1].split(" : ")[1]:m[1];a=a.split(/ \+ |, | puis /)}else if((m=t.match(/\((.+?)\)/))&&/par atelier|répéter/i.test(t))a=m[1].split(/, /);else a=[name];
+ return a.map(x=>x.replace(/\s*\(.*?\)/g,"").trim()).filter(x=>x&&!/^la liaison prévue$/.test(x)).slice(0,4)}
 /* ===================== PANNEAU « GÉNÉRER LA FICHE AUTOMATIQUEMENT » ===================== */
 function autoPanelHTML(){const f=cur,op=OP[f.niveau],mods=op?op.modules:[],ok=!!(BANK[f.aps]&&op);
  const fams=[SC,RV,AT,GY].map(fm=>`<optgroup label="${esc(fm)}">${AUTO_APS.filter(a=>BANK[a].fam===fm).map(a=>`<option ${f.aps===a?"selected":""}>${esc(a)}</option>`).join("")}</optgroup>`).join("");
@@ -2440,7 +2911,7 @@ function wimg(rid,id,cx,cy){return `<w:r><w:drawing><wp:inline distT="0" distB="
 function toPng(src,bg){return new Promise(res=>{if(!src)return res(null);const im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=im.naturalWidth||96;c.height=im.naturalHeight||96;const x=c.getContext("2d");x.fillStyle=bg||"#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0);
   c.toBlob(async b=>{if(!b)return res(null);res({bytes:new Uint8Array(await b.arrayBuffer()),w:c.width,h:c.height})},"image/png")};im.onerror=()=>res(null);im.src=src})}
 /* Découpe un schéma composé (480 px de large, panneaux de 354 px) en images séparées : la ligne du tableau Word peut alors continuer sur la page suivante */
-function toPngSlices(src){return new Promise(res=>{if(!src)return res([]);const im=new Image();im.onload=async()=>{const W=im.naturalWidth,H=im.naturalHeight,step=354;
+function toPngSlices(src,st){return new Promise(res=>{if(!src)return res([]);const im=new Image();im.onload=async()=>{const W=im.naturalWidth,H=im.naturalHeight,step=st||354;
   if(W!==480||H<=step+80){const p=await toPng(src);return res(p?[p]:[])}
   const out=[];for(let y=0;y<H;y+=step){const h=Math.min(step,H-y);if(h<20)break;const c=document.createElement("canvas");c.width=W;c.height=h;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,W,h);x.drawImage(im,0,y,W,h,0,0,W,h);
    const b=await new Promise(r=>c.toBlob(r,"image/png"));if(b)out.push({bytes:new Uint8Array(await b.arrayBuffer()),w:W,h})}res(out)};im.onerror=()=>res([]);im.src=src})}
@@ -2464,7 +2935,7 @@ async function ficheDocx(f){const TH=setDC(f),FS=fitFs(f),sz=Math.round(FS*2),TW
  const head=(x)=>wc(wp(wr(x,{b:true,color:DC.HF,sz}),{jc:"center"}),{fill:DC.HD,v:"center"});
  const lab=(x,w)=>wc(wp(lb(x)),{w,fill:DC.L,v:"center"}),val=(x,w,o)=>wc(wp(t(x,o)),{w,v:"center"});
  const paras=s=>String(s||"").trim().split("\n").map(l=>wp(t(l))).join("")||wp("");
- async function pics(src,wCm){const L=await toPngSlices(src);if(!L.length)return wp("");return L.map(p=>{const rid="rIdImg"+(imgs.length+1);imgs.push({rid,bytes:p.bytes});const cx=Math.round(wCm*360000),cy=Math.round(cx*p.h/p.w);return wp(wimg(rid,nid++,cx,cy),{jc:"center"})}).join("")}
+ async function pics(src,wCm,st){const L=await toPngSlices(src,st);if(!L.length)return wp("");return L.map(p=>{const rid="rIdImg"+(imgs.length+1);imgs.push({rid,bytes:p.bytes});const cx=Math.round(wCm*360000),cy=Math.round(cx*p.h/p.w);return wp(wimg(rid,nid++,cx,cy),{jc:"center"})}).join("")}
  async function pic(src,wCm){const p=await toPng(src);if(!p)return wp("");const rid="rIdImg"+(imgs.length+1);imgs.push({rid,bytes:p.bytes});const cx=Math.round(wCm*360000),cy=Math.round(cx*p.h/p.w);return wp(wimg(rid,nid++,cx,cy),{jc:"center"})}
  const b=[];
  b.push(await docxBanner(f,TW,imgs,()=>nid++,RS.title),wgap());
@@ -2476,8 +2947,8 @@ async function ficheDocx(f){const TH=setDC(f),FS=fitFs(f),sz=Math.round(FS*2),TW
   cen(f.module,w2[0])+cen(famName(f),w2[1])+cen(f.aps,w2[2])+cen(f.niveau,w2[3])+cen(f.seance,w2[4],{b:true,sz:RS.num})+cen(`G : ${f.effG}   F : ${f.effF}`,w2[5])+wc(wp(t(f.materiel)),{w:w2[6],v:"center"})]),wgap());
  const w3=pcts(TW,[23,77]),comps=f.competences.filter(c=>c.on&&c.t.trim()).map(c=>"- "+c.t.trim()).join("\n");
  b.push(wt(w3,[["Objectif terminal d’intégration (OTI)",f.oti],["Objectif terminal du cycle (OTC)",f.otc],["Compétences visées",comps],["Objectif de la séquence",f.objSeq],["Objectif de la séance",objSentence(f)]].map(([k,v],i)=>lab(k,w3[0])+wc(paras(v).replace(i===4?/<w:rPr>/g:/$^/,i===4?"<w:rPr><w:b/>":""),{w:w3[1],v:"center"}))),wgap());
- const w4=pcts(TW,[9,5,10,39,12.5,12.5,12]),hs4=["Phase","Durée","But","Contenu (situations, conditions et critères de réalisation, variables)","Consignes","Critères de réussite","Schématisation"];
- const imW=Math.min(w4[6]/567*0.92,Math.min(130,Math.max(78,130*FS/10.5))*2.54/96);
+ const gyW=f.famille===GY,w4=pcts(TW,gyW?[7,4.5,9,38.5,11.5,11.5,18]:[7,4.5,9,36,11.5,11.5,20.5]),hs4=["Phase","Durée","But","Contenu (situations, conditions et critères de réalisation, variables)","Consignes","Critères de réussite","Schématisation"];
+ const imW=Math.min(w4[6]/567*0.92,Math.min(gyW?186:212,Math.max(gyW?150:168,(gyW?186:212)*FS/9.5))*2.54/96);
  let cont="";const sits=fd.situations.filter(s=>Object.values(s).some(v=>String(v).trim()));
  sits.forEach((s,i)=>{if(sits.length>1||s.titre.trim())cont+=wp(wr(/^(Atelier|Test bilan)\b/.test(s.titre.trim())?s.titre.trim():`Situation ${i+1}${s.titre.trim()?" : "+s.titre.trim():""}`,{b:true,u:true,color:DC.D,sz}),{before:i?60:0});
   if(String(s.principe||"").trim())cont+=wp(lb("Principe d’action : ")+t(String(s.principe).trim())+((s.regles||[]).length?t(" — ")+lb("Règles d’action : ")+t(s.regles.join(" ; ")):""));
@@ -2488,7 +2959,7 @@ async function ficheDocx(f){const TH=setDC(f),FS=fitFs(f),sz=Math.round(FS*2),TW
  if(fd.reference.trim())cont+=wp(lb("Situation de référence : ")+t(fd.reference.trim()),{before:60});
  const cons=(fd.consSecu.trim()?wp(lb("Sécurité :"))+paras(fd.consSecu):"")+(fd.consOrga.trim()?wp(lb("Organisation :"),{before:40})+paras(fd.consOrga):"");
  const crit=(fd.critQuant.trim()?wp(lb("Quantitatifs :"))+paras(fd.critQuant):"")+(fd.critQual.trim()?wp(lb("Qualitatifs :"),{before:40})+paras(fd.critQual):"");
- const row=async(name,p,c,co,cr)=>wc(wp(wr(name,{b:true,color:DC.D,sz}),{jc:"center"}),{w:w4[0],fill:DC.M,v:"top"})+wc(wp(wr(p.duree,{b:true,color:DC.D,sz}),{jc:"center"}),{w:w4[1],v:"top"})+wc(paras(p.but),{w:w4[2]})+wc(c||wp(""),{w:w4[3]})+wc(co||wp(""),{w:w4[4]})+wc(cr||wp(""),{w:w4[5]})+wc(p.schema?await pics(p.schema,imW):wp(""),{w:w4[6],v:"top"});
+ const row=async(name,p,c,co,cr)=>wc(wp(wr(name,{b:true,color:DC.D,sz}),{jc:"center"}),{w:w4[0],fill:DC.M,v:"top"})+wc(wp(wr(p.duree,{b:true,color:DC.D,sz}),{jc:"center"}),{w:w4[1],v:"top"})+wc(paras(p.but),{w:w4[2]})+wc(c||wp(""),{w:w4[3]})+wc(co||wp(""),{w:w4[4]})+wc(cr||wp(""),{w:w4[5]})+wc(p.schema?await pics(p.schema,imW,p.schemaStep):wp(""),{w:w4[6],v:"top"});
  b.push(wt(w4,[hs4.map((x,i)=>wc(wp(wr(x,{b:true,color:DC.HF,sz:RS.head2}),{jc:"center"}),{w:w4[i],fill:DC.HD,v:"center"})).join(""),
   await row("Initiale",P.ini,paras(P.ini.contenu),paras(P.ini.consignes),paras(P.ini.criteres)),
   await row("Fondamentale",fd,cont,cons,crit),
