@@ -2919,8 +2919,11 @@ function sIni(S,f,bank,txt){const fam=bank.fam,c=S.c,H=S.H,sp0=f.aps==="Basketba
   else{c.fillStyle="#c1553b";c.fillRect(x0+6,cy-18,w-12,36);c.strokeStyle="#fff";c.lineWidth=1.5;c.strokeRect(x0+6,cy-18,w-12,36);sP(S,x0+18,cy,"ex",{lab:"Élève"});if(/haie/.test(l))[0.45,0.75].forEach(q=>sM(S,"haie",x0+w*q,cy,1,32));sAr(S,"run",[[x0+32,cy],[x0+w-10,cy]]);
    if(dm)sDim(S,x0+10,cy+32,x0+w-10,cy+32,dm[1]+" m",{s:12});else{const t=it.match(/(\d+) min/);if(t)sTx(S,cx,cy+34,t[0],{s:12})}}});
  S.P=P;sEnsure(S,P)}
-function sFin(S,f,txt){const c=S.c,H=S.H;sFill(S,"#eef2f6");S.layout="retour-au-calme";const cx=150,cy=H/2+8,A=sRing(cx,cy,84,H/2-30,8);
- if(/marche/i.test(txt))sAr(S,"run",[[cx+92,cy-20],[cx+100,cy+40],[cx+60,cy+70]],{curve:1,lab:"Marche, respiration"});A.forEach((p,j)=>sP(S,p[0],p[1],"ex",{lab:"Élève"}));sP(S,cx,cy,"ens");
+/* Retour au calme : élèves en cercle ; l’enseignant fait PARTIE du cercle (sur le bord, face au groupe), dans un emplacement laissé libre — jamais au centre */
+function sFin(S,f,txt){const c=S.c,H=S.H;sFill(S,"#eef2f6");S.layout="retour-au-calme";const cx=132,cy=H/2+6,rx=86,ry=H/2-32,NS=9,A=sRing(cx,cy,rx,ry,NS,Math.PI/2),T=A[0],E=A.slice(1);
+ c.save();c.strokeStyle="rgba(15,61,94,.45)";c.lineWidth=2;c.setLineDash([6,5]);c.beginPath();c.ellipse(cx,cy,rx,ry,0,0,7);c.stroke();c.restore();
+ if(/marche/i.test(txt))sAr(S,"run",[[cx+102,cy-30],[cx+114,cy+4],[cx+100,cy+38]],{curve:1,lab:"Marche, respiration"});E.forEach(p=>sP(S,p[0],p[1],"ex",{lab:"Élève"}));sP(S,T[0],T[1],"ens",{lab:"Enseignant"});
+ S.ring={cx,cy,rx,ry,ens:T.slice(),pupils:E.map(p=>p.slice())};
  const et=(txt.match(/étirements\s*:\s*([^.\n/]+)/)||[0,""])[1];sTx(S,cx,18,"étirements en cercle",{s:13});if(et)sTx(S,355,cy-34,et.length>34?et.slice(0,33)+"…":et,{s:12,n:1});
  if(/bilan/i.test(txt))sTx(S,355,cy-4,"bilan : questions / réponses",{s:13,box:"#fff"});if(/prochaine séance/.test(txt))sTx(S,355,cy+26,"annonce de la prochaine séance",{s:12,n:1})}
 /* ---------- assemblage avec légende ---------- */
@@ -2939,7 +2942,7 @@ function sCompose(panels){const HL=24,G=6,its=sLegendItems(panels.map(p=>p.S)),t
    c.restore();c.fillStyle="#222";c.font="15px Arial,sans-serif";c.textAlign="left";c.fillText(it.l,px+(it.t==="a"?38:26),yy+.5)})}
  return{url:cv.toDataURL("image/jpeg",0.88),h:H,legend:its,step:HL+(panels[0]?panels[0].S.H+BH(panels[0]):0)+G}}
 const SCH_SPECS=new WeakMap();
-function sSpec(S,P,title,src){return{title,layout:S.layout,labels:S.labels.slice(),roles:Object.keys(S.roles),mat:Object.keys(S.mat),arr:Object.keys(S.arr),counts:Object.assign({},S.counts),unit:S.unit,fb:S.fb.slice(),src,P,vsDrawn:S.vsDrawn,rot:S.rot||""}}
+function sSpec(S,P,title,src){return{title,layout:S.layout,labels:S.labels.slice(),roles:Object.keys(S.roles),mat:Object.keys(S.mat),arr:Object.keys(S.arr),counts:Object.assign({},S.counts),unit:S.unit,fb:S.fb.slice(),src,P,vsDrawn:S.vsDrawn,rot:S.rot||"",ring:S.ring||null}}
 function schemaSit(f,bank,x,i,ctx){const fam=bank.fam,isRef=/^Situation de référence/.test(x.titre),ti=x.titre||"",P=schParse(x.conditions,f.aps),S=sNew(ti,fam===GY?224:260);f._effN=(parseInt(f.effG)||0)+(parseInt(f.effF)||0)||32;try{f._obj=objSentence(f)}catch(e){f._obj=""}
  if(fam===SC)sSC(S,P,f,ti,isRef);else if(fam===RV)sRV(S,P,f,ti,isRef);else if(fam===GY)sGym(S,P,f,ti,isRef,ctx);
  else{const a=f.aps;(a==="Course de haies"?sHaies:a==="Relais"?sRelais:a==="Saut en longueur"?sLongueur:a==="Saut en hauteur"?sHauteur:a==="Lancer de poids"?sPoids:a==="Course d'endurance"?sEndurance:sVitesse)(S,P,f,ti,isRef)}
