@@ -149,6 +149,8 @@ textarea{resize:vertical;min-height:58px;line-height:1.35}
  #printArea .ppage{page-break-after:always;break-after:page}
  #printArea .ppage:last-child{page-break-after:auto;break-after:auto}
 }
+.profWrap{max-width:1150px}.ptab{overflow-x:auto}table.pt{border-collapse:collapse;width:100%;font-size:13px}.pt th{background:var(--l);color:var(--b);text-align:left;padding:5px 6px;font-size:12px}.pt td{padding:3px 4px;border-bottom:1px solid #e4e9f0}.pt input,.pt select{width:100%;min-width:70px;padding:4px 6px;font-size:13px}.pt input[type=color]{min-width:44px;padding:1px;height:28px}.pt.tt td{min-width:110px}.pt.cyc td:nth-child(2) select{min-width:170px}.pt.cyc td select{min-width:150px}.pt input[type=number]{min-width:56px;max-width:80px}
+.cahPrev{display:flex;flex-direction:column;align-items:center;gap:14px;padding:6px 0 30px;zoom:.78}.cahPrev .cpg{box-shadow:0 2px 10px rgba(0,0,0,.18)}.cahPrev .ccopy{display:inline-block;border:0;background:none;cursor:pointer;font-size:12px;padding:0 2px;float:right}
 </style>
 </head>
 <body>
@@ -177,7 +179,7 @@ textarea{resize:vertical;min-height:58px;line-height:1.35}
   </aside>
   <div class="sideMask" id="sideMask"></div>
   <main class="main">
-    <div class="tabs"><button class="tab on" data-tab="pEdit">✎ Éditeur</button><button class="tab" data-tab="pPrev">👁 Aperçu A4</button></div>
+    <div class="tabs"><button class="tab on" data-tab="pEdit">✎ Éditeur</button><button class="tab" data-tab="pPrev">👁 Aperçu A4</button><button class="tab" data-tab="pProf">👤 Mon profil / Mes classes</button><button class="tab" data-tab="pCah">📒 Cahier de texte</button></div>
     <div class="panes">
       <section class="pane on" id="pEdit"></section>
       <section class="pane" id="pPrev">
@@ -186,6 +188,8 @@ textarea{resize:vertical;min-height:58px;line-height:1.35}
           <div id="scaleBox"><div class="scaler" id="scaler"><div class="page" id="page"></div></div></div>
         </div>
       </section>
+      <section class="pane" id="pProf"></section>
+      <section class="pane" id="pCah"></section>
     </div>
   </main>
 </div>
@@ -2975,6 +2979,8 @@ function autoPanelHTML(){const f=cur,op=OP[f.niveau],mods=op?op.modules:[],ok=!!
  const len=parseInt(f.cycleLen)||10;
  return `<div class="card autoCard"><h2><span class="n">⚡</span><span class="apsIco">${apsIcon(f.aps,f.famille)}</span>Générer la fiche automatiquement<span class="sp">niveau + APS + module + compétences → fiche complète</span></h2><div class="cb">
  <div class="grid">
+  ${(()=>{const P=profLoad();return `<div class="f"><label class="lb">Classe <span class="hint">Mon profil</span></label><select id="aCls"><option value="">— Choisir —</option>${P.classes.map(c=>`<option ${f.classe===c.nom?"selected":""}>${esc(c.nom)}</option>`).join("")}</select></div>
+  <div class="f w2"><label class="lb">Cycle <span class="hint">répartition cyclique</span></label><select id="aCyc"><option value="">— Choisir —</option>${P.cycles.map((c,i)=>`<option value="${i+1}" ${String(f.cyc)===String(i+1)?"selected":""}>C${i+1} · ${esc(apsTitle(c.aps))} · ${dFr(c.du)} – ${dFr(c.au)}</option>`).join("")}</select></div>`})()}
   <div class="f"><label class="lb">Niveau</label><select id="aNiv"><option value="">— Choisir —</option>${NIVEAUX.map(n=>`<option value="${n}" ${f.niveau===n?"selected":""}>${OP[n].label}</option>`).join("")}</select></div>
   <div class="f"><label class="lb">APS support</label><select id="aAps"><option value="">— Choisir —</option>${fams}</select></div>
   <div class="f w2"><label class="lb">Module</label><select id="aMod" ${op?"":"disabled"}><option value="">${op?"— Choisir le module —":"Choisir d’abord le niveau"}</option>${mods.map((m,i)=>`<option value="${i}" ${String(f.moduleIdx)===String(i)?"selected":""}>${esc(m.n+" : "+m.nom)}</option>`).join("")}</select></div>
@@ -3028,7 +3034,7 @@ function wr(t,o){o=o||{};const rp=`<w:rPr>${o.font?`<w:rFonts w:ascii="${o.font}
  return String(t==null?"":t).split("\n").map((l,i)=>`<w:r>${rp}${i?"<w:br/>":""}<w:t xml:space="preserve">${XE(l)}</w:t></w:r>`).join("")}
 function wp(runs,o){o=o||{};return `<w:p><w:pPr>${o.bb?`<w:pBdr><w:bottom w:val="single" w:sz="${o.bbsz||18}" w:space="1" w:color="${o.bb}"/></w:pBdr>`:""}<w:spacing w:before="${o.before||0}" w:after="0" w:line="${o.line||228}" w:lineRule="auto"/>${o.jc?`<w:jc w:val="${o.jc}"/>`:""}<w:rPr>${o.sz?`<w:sz w:val="${o.sz}"/>`:""}</w:rPr></w:pPr>${runs||""}</w:p>`}
 function wc(paras,o){o=o||{};return `<w:tc><w:tcPr><w:tcW w:w="${o.w}" w:type="dxa"/>${o.span>1?`<w:gridSpan w:val="${o.span}"/>`:""}${o.vm?`<w:vMerge${o.vm==="restart"?' w:val="restart"':""}/>`:""}${o.fill?`<w:shd w:val="clear" w:color="auto" w:fill="${o.fill}"/>`:""}<w:vAlign w:val="${o.v||"top"}"/></w:tcPr>${paras||wp("")}</w:tc>`}
-function wt(ws,rows,opt){opt=opt||{};return `<w:tbl><w:tblPr><w:tblW w:w="${ws.reduce((a,b)=>a+b,0)}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>${["top","left","bottom","right","insideH","insideV"].map(k=>opt.nob?`<w:${k} w:val="nil"/>`:`<w:${k} w:val="single" w:sz="6" w:space="0" w:color="${DC.LN}"/>`).join("")}</w:tblBorders><w:tblCellMar><w:top w:w="15" w:type="dxa"/><w:left w:w="55" w:type="dxa"/><w:bottom w:w="15" w:type="dxa"/><w:right w:w="55" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${ws.map(w=>`<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>${rows.map((r,ri)=>`<w:tr><w:trPr>${opt.split?"":"<w:cantSplit/>"}${opt.h?`<w:trHeight w:val="${opt.h}" w:hRule="exact"/>`:""}${opt.hdr&&!ri?"<w:tblHeader/>":""}</w:trPr>${r}</w:tr>`).join("")}</w:tbl>`}
+function wt(ws,rows,opt){opt=opt||{};return `<w:tbl><w:tblPr><w:tblW w:w="${ws.reduce((a,b)=>a+b,0)}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>${["top","left","bottom","right","insideH","insideV"].map(k=>opt.nob?`<w:${k} w:val="nil"/>`:`<w:${k} w:val="single" w:sz="6" w:space="0" w:color="${DC.LN}"/>`).join("")}</w:tblBorders><w:tblCellMar><w:top w:w="15" w:type="dxa"/><w:left w:w="55" w:type="dxa"/><w:bottom w:w="15" w:type="dxa"/><w:right w:w="55" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${ws.map(w=>`<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>${rows.map((r,ri)=>`<w:tr><w:trPr>${opt.split?"":"<w:cantSplit/>"}${opt.h?`<w:trHeight w:val="${opt.h}" w:hRule="exact"/>`:""}${opt.hmin&&ri?`<w:trHeight w:val="${opt.hmin}" w:hRule="atLeast"/>`:""}${opt.hdr&&!ri?"<w:tblHeader/>":""}</w:trPr>${r}</w:tr>`).join("")}</w:tbl>`}
 const wgap=()=>wp("",{sz:6});
 function pcts(total,arr){const w=arr.map(p=>Math.round(total*p/100));w[w.length-1]+=total-w.reduce((a,b)=>a+b,0);return w}
 function wimg(rid,id,cx,cy){return `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${id}" name="Schema${id}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${id}" name="schema${id}.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`}
@@ -3173,6 +3179,224 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
 
 /* thème : couleur de l’APS (Moderne clair) */
 {const _rp=renderPreview;renderPreview=function(){applyTheme();return _rp.apply(this,arguments)}}
+/* Registre importé du cahier TATABO3 (séances effectuées avant le 30/10/2026 selon l’ancien emploi du temps, remarques saisies) — clé « cycle|classe|séance » ; o = rang dans le tableau TATABO3 */
+const CAH_REG_PDF={"1|1BACLSH1|1":{"date":"2026-09-14","rem":"Absence collective des élèves","o":1},"1|1BACLSH2|1":{"date":"2026-09-15","rem":"Absence collective des élèves","o":2},"1|1BACLSH3|1":{"date":"2026-09-16","rem":"Absence collective des élèves","o":3},"1|1BACLSH4|1":{"rem":"Absence collective des élèves","o":4},"1|1BACLSH4|2":{"rem":"Absence collective des élèves","o":1},"1|1BACLSH1|2":{"date":"2026-09-18","rem":"Absence collective des élèves","o":2},"1|1BACLSH3|2":{"date":"2026-09-18","rem":"Absence collective des élèves","o":3},"1|1BACLSH2|2":{"date":"2026-09-18","rem":"Absence collective des élèves","o":4},"1|1BACLSH1|3":{"date":"2026-09-21","rem":"Absence collective des élèves","o":1},"1|1BACLSH2|3":{"date":"2026-09-22","rem":"Absence collective des élèves","o":2},"1|1BACLSH3|3":{"date":"2026-09-23","rem":"Absence collective des élèves","o":3},"1|1BACLSH4|3":{"rem":"Absence collective des élèves","o":4},"1|1BACLSH4|4":{"rem":"Absence collective des élèves","o":1},"1|1BACLSH1|4":{"date":"2026-09-25","rem":"Absence collective des élèves","o":2},"1|1BACLSH3|4":{"date":"2026-09-25","rem":"Absence collective des élèves","o":3},"1|1BACLSH2|4":{"date":"2026-09-25","rem":"Absence collective des élèves","o":4},"1|1BACLSH1|5":{"date":"2026-09-28","o":1},"1|1BACLSH2|5":{"date":"2026-09-29","o":2},"1|1BACLSH3|5":{"date":"2026-09-30","o":3},"1|1BACLSH1|6":{"date":"2026-10-02","o":2},"1|1BACLSH3|6":{"date":"2026-10-02","o":3},"1|1BACLSH2|6":{"date":"2026-10-02","o":4},"1|1BACLSH1|7":{"date":"2026-10-05","o":1},"1|1BACLSH2|7":{"date":"2026-10-06","o":2},"1|1BACLSH3|7":{"date":"2026-10-07","o":3},"1|1BACLSH1|8":{"date":"2026-10-09","o":2},"1|1BACLSH3|8":{"date":"2026-10-09","o":3},"1|1BACLSH2|8":{"date":"2026-10-09","o":4},"1|1BACLSH1|9":{"date":"2026-10-12","o":1},"1|1BACLSH2|9":{"date":"2026-10-13","o":2},"1|1BACLSH3|9":{"date":"2026-10-14","o":3},"1|1BACLSH1|10":{"date":"2026-10-16","o":2},"1|1BACLSH3|10":{"date":"2026-10-16","o":3},"1|1BACLSH2|10":{"date":"2026-10-16","o":4},"1|2BACSVT1|1":{"rem":"Absence collective des élèves","o":1},"1|2BACSVT2|1":{"date":"2026-09-14","rem":"Absence collective des élèves","o":2},"1|2BACSP5|1":{"rem":"Absence collective des élèves","o":3},"1|2BACSP4|1":{"rem":"Absence collective des élèves","o":4},"1|2BACSVT1|2":{"rem":"Absence collective des élèves","o":1},"1|2BACSP4|2":{"date":"2026-09-17","rem":"Absence collective des élèves","o":2},"1|2BACSVT2|2":{"date":"2026-09-17","rem":"Absence collective des élèves","o":3},"1|2BACSP5|2":{"rem":"Absence collective des élèves","o":4},"1|2BACSVT1|3":{"rem":"Absence collective des élèves","o":1},"1|2BACSVT2|3":{"date":"2026-09-21","rem":"Absence collective des élèves","o":2},"1|2BACSP5|3":{"rem":"Absence collective des élèves","o":3},"1|2BACSP4|3":{"rem":"Absence collective des élèves","o":4},"1|2BACSVT1|4":{"rem":"Absence collective des élèves","o":1},"1|2BACSP4|4":{"date":"2026-09-24","rem":"Absence collective des élèves","o":2},"1|2BACSVT2|4":{"date":"2026-09-24","rem":"Absence collective des élèves","o":3},"1|2BACSP5|4":{"rem":"Absence collective des élèves","o":4},"1|2BACSVT2|5":{"date":"2026-09-28","o":2},"1|2BACSP4|6":{"date":"2026-10-01","o":2},"1|2BACSVT2|6":{"date":"2026-10-01","o":3},"1|2BACSVT2|7":{"date":"2026-10-05","o":2},"1|2BACSP4|8":{"date":"2026-10-08","o":2},"1|2BACSVT2|8":{"date":"2026-10-08","o":3},"1|2BACSVT2|9":{"date":"2026-10-12","o":2},"1|2BACSP4|10":{"date":"2026-10-15","o":2},"1|2BACSVT2|10":{"date":"2026-10-15","o":3},"2|1BACLSH1|1":{"date":"2026-10-26","o":1},"2|1BACLSH2|1":{"date":"2026-10-27","o":2},"2|1BACLSH3|1":{"date":"2026-10-28","o":3},"2|1BACLSH4|2":{"rem":"Réunion des coordinateurs","o":1},"2|1BACLSH1|2":{"date":"2026-10-30","rem":"Réunion des coordinateurs","o":2},"2|1BACLSH3|2":{"date":"2026-10-30","rem":"Réunion des coordinateurs","o":3},"2|1BACLSH2|2":{"date":"2026-10-30","rem":"Réunion des coordinateurs","o":4},"2|1BACLSH2|5":{"rem":"Mauvais temps"},"2|1BACLSH3|5":{"rem":"Mauvais temps"},"2|1BACLSH2|6":{"rem":"Mauvais temps"},"2|1BACLSH4|6":{"rem":"Réunion administration (ASS)"},"2|2BACSVT2|1":{"date":"2026-10-26","o":2},"2|2BACSP4|2":{"date":"2026-10-29","o":2},"2|2BACSVT2|2":{"date":"2026-10-29","o":3},"2|2BACSVT3|3":{"rem":"Mauvais temps"},"2|2BACSVT1|5":{"rem":"Mauvais temps"},"2|2BACSP4|6":{"rem":"Réunion administration (ASS)"},"2|2BACSP5|8":{"rem":"Réunion administration"},"1|1BACLSH4|5":{"o":4},"1|1BACLSH4|6":{"o":1},"1|1BACLSH4|7":{"o":4},"1|1BACLSH4|8":{"o":1},"1|1BACLSH4|9":{"o":4},"1|1BACLSH4|10":{"o":1},"1|2BACSVT1|5":{"o":1},"1|2BACSP5|5":{"o":3},"1|2BACSP4|5":{"o":4},"1|2BACSVT1|6":{"o":1},"1|2BACSP5|6":{"o":4},"1|2BACSVT1|7":{"o":1},"1|2BACSP5|7":{"o":3},"1|2BACSP4|7":{"o":4},"1|2BACSVT1|8":{"o":1},"1|2BACSP5|8":{"o":4},"1|2BACSVT1|9":{"o":1},"1|2BACSP5|9":{"o":3},"1|2BACSP4|9":{"o":4},"1|2BACSVT1|10":{"o":1},"1|2BACSP5|10":{"o":4},"2|1BACLSH4|1":{"o":4},"2|2BACSVT1|1":{"o":1},"2|2BACSP5|1":{"o":3},"2|2BACSP4|1":{"o":4},"2|2BACSVT3|1":{"o":5},"2|2BACSVT1|2":{"o":1},"2|2BACSP5|2":{"o":4},"2|2BACSVT3|2":{"o":5}};
+/* ===================== MON PROFIL / MES CLASSES · CAHIER DE TEXTE ===================== */
+/* Données de départ : cahier de texte TATABO3 de l’enseignant (2026–2027). Tout est modifiable et enregistré dans le navigateur. */
+const LS_PROF="eps_profil_v1";
+const DAYS=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"],DAY3=["Lun","Mar","Mer","Jeu","Ven","Sam"];
+const TT_HOURS=["08:00","09:00","10:00","11:00","14:00","15:00","16:00","17:00"];
+const CAH_APS={"Course en durée":"Course d'endurance","Course d’endurance":"Course d'endurance","Basket-Ball":"Basketball","Basket-ball":"Basketball","Volleyball":"Volley-ball"};
+function profDefault(){return{
+ ens:"E. Tammar Mohamed",nom:"Tammar",prenom:"Mohamed",etab:"Lycée qualifiant Baja",aref:"Casablanca-Settat",dp:"Settat",ville:"Ben Ahmed",annee:"2026–2027",ferMode:"garder",
+ classes:[["1BACLSH1","1BAC",40,"#e8711a"],["1BACLSH2","1BAC",40,"#d1342f"],["1BACLSH3","1BAC",40,"#f08c2e"],["1BACLSH4","1BAC",41,"#8a5a2b"],["2BACSP4","2BAC",40,"#2f6db5"],
+  ["2BACSP5","2BAC",42,"#1a9aa0"],["2BACSVT1","2BAC",39,"#e2b100"],["2BACSVT2","2BAC",39,"#7b4fd0"],["2BACSVT3","2BAC",37,"#1d3a6b",""]].map(([nom,niv,eff,col])=>({nom,niv,eff,G:Math.ceil(eff/2),F:Math.floor(eff/2),col,debut:nom==="2BACSVT3"?"2026-11-04":""})),
+ tt:[["2BACSVT1",0,"15:00"],["1BACLSH2",0,"16:00"],["1BACLSH3",0,"17:00"],["2BACSVT2",1,"08:00"],["2BACSP4",1,"09:00"],["2BACSP5",1,"10:00"],["1BACLSH1",1,"11:00"],
+  ["1BACLSH4",2,"08:00"],["2BACSVT1",2,"09:00"],["1BACLSH2",2,"10:00"],["2BACSVT3",2,"11:00"],["1BACLSH3",3,"15:00"],["1BACLSH1",3,"16:00"],["2BACSP5",3,"17:00"],
+  ["2BACSVT2",4,"08:00"],["2BACSVT3",4,"09:00"],["1BACLSH4",4,"10:00"],["2BACSP4",4,"11:00"]].map(([c,d,h])=>({c,d,h})),
+ vac:[["1re période intermédiaire (vacances)","2026-10-18","2026-10-25","Vacances"],["Fête de l’Unité (Aïd al-Wahda)","2026-10-31","","Jour férié"],["Anniversaire de la Marche verte","2026-11-06","","Jour férié"],
+  ["Fête de l’Indépendance","2026-11-18","","Jour férié"],["2e période intermédiaire (vacances)","2026-12-06","2026-12-13","Vacances"],["Nouvel An","2027-01-01","","Jour férié"],
+  ["Manifeste de l’Indépendance","2027-01-11","","Jour férié"],["Nouvel An amazigh","2027-01-14","","Jour férié"],["Vacances de mi-année","2027-01-24","2027-01-31","Vacances"],
+  ["Aïd al-Fitr (date approximative)","2027-03-08","2027-03-11","Jour férié"],["3e période intermédiaire (vacances)","2027-03-21","2027-03-28","Vacances"],["Fête du Travail","2027-05-01","","Jour férié"],
+  ["4e période intermédiaire (vacances)","2027-05-09","2027-05-16","Vacances"],["Aïd al-Adha (date approximative)","2027-05-16","2027-05-18","Jour férié"],["1er moharram 1449 (date approximative)","2027-06-06","","Jour férié"]].map(([nom,du,au,type])=>({nom,du,au,type})),
+ cycles:[["Course d'endurance","2026-09-14","2026-10-17"],["Lancer de poids","2026-10-26","2026-11-29"],["Basketball","2026-11-30","2027-01-09"],["Course de vitesse","2027-02-01","2027-02-28"],
+  ["Volley-ball","2027-03-01","2027-04-11"],["Saut en longueur","2027-04-12","2027-05-22"]].map(([aps,du,au],i)=>({aps,du,au,len:10,mods:{"1BAC":i<3?0:1,"2BAC":i<3?0:1}})),
+ reg:JSON.parse(JSON.stringify(CAH_REG_PDF)),stamp:"TATABO3 2026-2027"}}
+let PROF=null;
+function profLoad(){if(PROF)return PROF;try{PROF=JSON.parse(STORE.getItem(LS_PROF)||"null")}catch(e){PROF=null}if(!PROF||!Array.isArray(PROF.classes))PROF=profDefault();return PROF}
+function profSave(){try{STORE.setItem(LS_PROF,JSON.stringify(PROF))}catch(e){toast("⚠ Enregistrement du profil impossible")}CAH_CACHE.clear()}
+/* ---------- dates ---------- */
+const isoD=s=>{const m=/^(\d{4})-(\d\d)-(\d\d)$/.exec(s||"");return m?new Date(Date.UTC(+m[1],+m[2]-1,+m[3],12)):null};
+const dIso=d=>d.toISOString().slice(0,10);
+const dFr=s=>{const d=isoD(s);return d?`${String(d.getUTCDate()).padStart(2,"0")}/${String(d.getUTCMonth()+1).padStart(2,"0")}/${d.getUTCFullYear()}`:""};
+const dDay=s=>{const d=isoD(s);return d?DAY3[(d.getUTCDay()+6)%7]:""};
+function vacShort(n){return String(n||"").replace(/\s*\((?:date approximative|vacances)\)/gi,"").replace(/\s*\([^)]*\)\s*date approximative/i,"").replace(/\s*date approximative/i,"").trim()}
+function offOn(P,iso){for(const v of P.vac){const a=v.du,b=v.au||v.du;if(a&&iso>=a&&iso<=b)return v}return null}
+function clsOf(P,nom){return P.classes.find(c=>c.nom===nom)}
+/* Créneaux d’une classe dans un cycle : emploi du temps − vacances ; jours fériés gardés avec remarque (comme TATABO3) ou sautés */
+function cahSlots(P,ci,nom){const cy=P.cycles[ci],cl=clsOf(P,nom);if(!cy||!cl)return[];const tt=P.tt.filter(t=>t.c===nom).sort((a,b)=>a.d-b.d||a.h.localeCompare(b.h));
+ let d=isoD(cl.debut&&cl.debut>cy.du?cl.debut:cy.du);const end=isoD(cy.au),out=[];if(!d||!end)return out;
+ for(;d<=end;d=new Date(d.getTime()+864e5)){const wd=(d.getUTCDay()+6)%7,iso=dIso(d);for(const t of tt)if(t.d===wd){const o=offOn(P,iso);
+   if(o&&/vacances/i.test(o.type))continue;if(o&&P.ferMode==="sauter")continue;out.push({date:iso,h:t.h,rem:o?vacShort(o.nom):"",auto:!!o})}}
+ return out}
+/* Plan du cycle : séances 1..len par classe, avec le registre (dates effectuées, remarques) */
+function cahPlan(P,ci){const cy=P.cycles[ci],len=+cy.len||10,res={};
+ for(const cl of P.classes){const sl=cahSlots(P,ci,cl.nom),rows=[];let any=sl.length>0;
+  for(let s=1;s<=len;s++){const b=sl[s-1]||{date:"",h:"",rem:"Aucun créneau dans le cycle",auto:true},r=P.reg[`${ci+1}|${cl.nom}|${s}`];
+   const row=Object.assign({s,classe:cl.nom,niv:cl.niv,planned:b.date},b);if(r){any=true;if(r.date!=null&&r.date!==""){row.date=r.date;row.done=true;if(!sl[s-1]||r.date!==b.date)row.h=(P.tt.find(t=>t.c===cl.nom&&t.d===(isoD(r.date).getUTCDay()+6)%7)||{}).h||b.h||"";if(row.rem==="Aucun créneau dans le cycle")row.rem=""}if(r.rem!=null)row.rem=r.rem;if(r.o)row.o=r.o}
+   rows.push(row)}
+  if(any)res[cl.nom]=rows}
+ return res}
+/* ---------- objectifs de séance (mêmes que les fiches générées) ---------- */
+const CAH_CACHE=new Map();
+function cahFiche(P,ci,niv,s,nom){const cy=P.cycles[ci],aps=CAH_APS[cy.aps]||cy.aps,bank=BANK[aps],op=OP[niv];if(!bank||!op)return null;const cl=nom?clsOf(P,nom):null;
+ const f=newFiche();f.niveau=niv;f.aps=aps;f.famille=bank.fam;const mi=+((cy.mods||{})[niv]||0);f.moduleIdx=String(mi);f.module=op.modules[mi]?op.modules[mi].nom:"";
+ f.competences=(op.modules[mi]?op.modules[mi].comp:[]).map(t=>({t,on:false}));f.cycleLen=String(cy.len||10);f.seance=String(s);f.etab=P.etab;f.ens=P.ens;
+ if(cl){f.classe=cl.nom;f.effG=String(cl.G);f.effF=String(cl.F)}else{f.effG="20";f.effF="20"}f.oti=op.oti;f.otc=op.otc[bank.fam]||"";f.cyc=ci+1;
+ genFiche(f,{n:s});return f}
+function cahObj(P,ci,niv,s){const k=[ci,niv,s,P.cycles[ci].aps,JSON.stringify(P.cycles[ci].mods),P.cycles[ci].len].join("|");if(CAH_CACHE.has(k))return CAH_CACHE.get(k);
+ let o="";try{const f=cahFiche(P,ci,niv,s);o=f?objSentence(f):""}catch(e){console.warn(e)}CAH_CACHE.set(k,o);return o}
+const cahLab=(s,len)=>s===1?["TO","test d’observation"]:s===len?["TB","test bilan"]:[String(s),""];
+/* Données du cahier : par cycle, par niveau, par séance → classes dans l’ordre de passage de la semaine */
+function cahData(P,ciList,nivList){P=P||profLoad();const out=[];
+ (ciList||P.cycles.map((_,i)=>i)).forEach(ci=>{const cy=P.cycles[ci],len=+cy.len||10,plan=cahPlan(P,ci),nivs=[...new Set(P.classes.map(c=>c.niv))].filter(n=>!nivList||nivList.includes(n));
+  nivs.forEach(niv=>{const cls=P.classes.filter(c=>c.niv===niv&&plan[c.nom]);if(!cls.length)return;const seances=[];
+   for(let s=1;s<=len;s++){const rows=cls.map(c=>plan[c.nom][s-1]).sort((a,b)=>a.o&&b.o?a.o-b.o:(a.date||"9")>(b.date||"9")?1:(a.date||"9")<(b.date||"9")?-1:(a.h||"").localeCompare(b.h||""));
+    seances.push({s,lab:cahLab(s,len),obj:cahObj(P,ci,niv,s),rows})}
+   out.push({ci,cy,aps:CAH_APS[cy.aps]||cy.aps,niv,classes:cls.map(c=>c.nom),seances})})});
+ return out}
+function apsTitle(a){return({"Course d'endurance":"Course en durée","Basketball":"Basket-ball","Volley-ball":"Volley-ball"})[a]||a}
+function cahFam(a){const b=BANK[CAH_APS[a]||a];return b?({[AT]:"Athlétisme",[SC]:"Sport collectif",[RV]:"Sport collectif",[GY]:"Gymnastique"})[b.fam]:""}
+/* ---------- HTML A4 portrait ---------- */
+const CAH_CSS=`@page{size:A4 portrait;margin:0}
+.cpg{width:210mm;height:296.5mm;box-sizing:border-box;padding:11mm 11mm 9mm;position:relative;background:#fff;font-family:Poppins,"Segoe UI",Calibri,Carlito,Arial,sans-serif;color:#0d2b52;page-break-after:always;break-after:page;overflow:hidden}
+.cpg:last-child{page-break-after:auto;break-after:auto}
+.chd{display:flex;align-items:center;gap:10px}.chd .tt{background:#0d2b52;color:#fff;font-weight:800;font-style:italic;font-size:15pt;padding:5px 14px;border-radius:3px;box-shadow:5px 4px 0 #e8711a;text-transform:uppercase}
+.chd .tt small{font-size:9pt;text-transform:none}.chd .ico{margin-left:auto;width:13mm;height:13mm;border-radius:50%;background:#e8711a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17pt}
+.csub{font-size:8.6pt;font-weight:700;margin:6px 0 5px}.cleg{font-size:6.8pt;color:#334;margin:0 0 4px}
+table.ct{width:100%;border-collapse:collapse;table-layout:fixed;font-size:7.4pt}
+.ct th{background:#0d2b52;color:#fff;font-size:7.4pt;padding:4px 3px;text-transform:uppercase}
+.ct td{border:1px solid #c8d1dd;padding:2px 4px;vertical-align:middle;line-height:1.22}
+.ct td.sn{background:#eef3f9;text-align:center;font-weight:800;font-size:13pt;color:#0d2b52}.ct td.sn small{display:block;font-size:6.4pt;color:#e8711a;font-weight:600}
+.ct td.cl{font-weight:700;border-left-width:4px}.ct td.dt{font-weight:700;text-align:center;white-space:nowrap}.ct td.dt.pl{color:#7b8794;font-weight:500}
+.ct td.ob{vertical-align:top;background:#fff;position:relative;font-size:7.3pt;color:#14263f;padding:3px 5px}.ct td.rm{font-size:6.8pt;color:#384b63}
+.ct tr.sep td{border-top:2px solid #0d2b52}
+.csig{display:flex;justify-content:space-between;margin-top:10mm;font-size:9pt;font-weight:800}.csig div{width:45%}.csig i{display:block;border-bottom:1px solid #0d2b52;height:12mm;margin-bottom:2px}.csig span{font-size:7pt;font-weight:400}
+.cnm{text-align:center;font-weight:800;font-style:italic;color:#2f6db5;margin-top:6mm}
+.cft{position:absolute;left:11mm;right:11mm;bottom:6mm;border-top:2px solid #0d2b52;padding-top:3px;font-size:6.8pt;display:flex;justify-content:space-between;color:#334}
+.cov h1{font-size:24pt;margin:18mm 0 2mm;color:#0d2b52}.cov h2{font-size:13pt;margin:0 0 8mm;color:#e8711a}.cov table{border-collapse:collapse;width:100%;font-size:9pt;margin-bottom:6mm}.cov td,.cov th{border:1px solid #c8d1dd;padding:4px 6px;text-align:left}.cov th{background:#0d2b52;color:#fff}
+.ccopy{display:none}`;
+function cahPages(P,data){const pages=[],foot=n=>`<div class="cft"><span>Cahier de texte d’EPS · ${esc(P.ens)} · ${esc(P.etab)} · ${esc(P.annee)}</span><span>Fiches EPS · p. ${n}</span></div>`;
+ const col=nom=>(clsOf(P,nom)||{}).col||"#0d2b52";
+ data.forEach(d=>{const len=d.seances.length,per=5;for(let p=0;p*per<len;p++){const ss=d.seances.slice(p*per,p*per+per);
+  const nr=ss.reduce((a,se)=>a+se.rows.length,0),rh=Math.min(10,(last0=>(last0?178:212)/nr)((p+1)*per>=len)).toFixed(2);
+  const body=ss.map(se=>{const n=se.rows.length;return se.rows.map((r,i)=>`<tr class="${i?"":"sep"}" style="height:${rh}mm">${i?"":`<td class="sn" rowspan="${n}">${esc(se.lab[0])}${se.lab[1]?`<small>${esc(se.lab[1])}</small>`:""}</td>`}<td class="cl" style="border-left-color:${col(r.classe)}">${esc(r.classe)}</td><td class="dt ${r.done||(r.date&&r.date<=today())?"":"pl"}" data-k="${d.ci+1}|${esc(r.classe)}|${r.s}">${r.date?dDay(r.date)+" "+dFr(r.date):""}</td>${i?"":`<td class="ob" rowspan="${n}">${esc(se.obj)}<button class="ccopy" data-copy="${esc(se.obj)}" title="Copier l’objectif">📋</button></td>`}<td class="rm" data-k="${d.ci+1}|${esc(r.classe)}|${r.s}">${esc(r.rem||"")}</td></tr>`).join("")}).join("");
+  const last=(p+1)*per>=len;
+  pages.push(`<div class="cpg"><div class="chd"><div class="tt">Cycle ${d.ci+1} : ${esc(apsTitle(d.aps))}${p?" <small>(suite)</small>":""}</div><div class="ico">${apsIcon(d.aps,(BANK[d.aps]||{}).fam)}</div></div>
+<div class="csub">DU ${dFr(d.cy.du).replace(/\//g," / ")} AU ${dFr(d.cy.au).replace(/\//g," / ")} · ${esc(d.niv)} : ${d.classes.map(esc).join(" · ")}</div>
+<div class="cleg"><b>TO</b> = test d’observation · <b>TB</b> = test bilan · ${len} séances par cycle, classes dans l’ordre de passage de la semaine · <b>date en gras</b> : séance effectuée (registre) · <span style="color:#7b8794">date en gris</span> : date prévue d’après l’emploi du temps · objectifs générés par Fiches EPS (OP 2007, ${esc((OP[d.niv].modules[+(d.cy.mods||{})[d.niv]||0]||{}).n||"")}).</div>
+<table class="ct"><colgroup><col style="width:10%"><col style="width:12.5%"><col style="width:14.5%"><col style="width:44%"><col style="width:19%"></colgroup><thead><tr><th>Séances</th><th>Classe</th><th>Dates</th><th>Objectifs</th><th>Remarques</th></tr></thead><tbody>${body}</tbody></table>
+${last?`<div class="csig"><div>LE DIRECTEUR<i></i><span>(Signature)</span></div><div>L’INSPECTEUR<i></i><span>(Signature)</span></div></div><div class="cnm">${esc(P.ens)}</div>`:""}${foot("{n}")}</div>`)}});
+ return pages}
+function cahCover(P){const cy=P.cycles.map((c,i)=>`<tr><td>C${i+1}</td><td>${esc(cahFam(c.aps))}</td><td><b>${esc(apsTitle(CAH_APS[c.aps]||c.aps))}</b></td><td>${dFr(c.du)}</td><td>${dFr(c.au)}</td><td>${c.len||10}</td></tr>`).join("");
+ const cls=P.classes.map(c=>`<tr><td><b>${esc(c.nom)}</b></td><td>${esc(c.niv)}</td><td>${c.eff}</td><td>${P.tt.filter(t=>t.c===c.nom).sort((a,b)=>a.d-b.d).map(t=>DAYS[t.d]+" "+t.h).join(" · ")}</td></tr>`).join("");
+ return `<div class="cpg cov"><h1>CAHIER DE TEXTE<br>D’ÉDUCATION PHYSIQUE ET SPORTIVE</h1><h2>Année scolaire ${esc(P.annee)} · objectifs des séances</h2>
+<table><tr><th colspan="2">Enseignant</th></tr><tr><td>Nom et prénom</td><td><b>${esc(P.ens)}</b></td></tr><tr><td>Établissement</td><td>${esc(P.etab)}</td></tr><tr><td>AREF / Direction provinciale</td><td>${esc(P.aref)} · ${esc(P.dp)} · ${esc(P.ville)}</td></tr></table>
+<table><tr><th>Classe</th><th>Niveau</th><th>Effectif</th><th>Créneaux</th></tr>${cls}</table>
+<table><tr><th>Cycle</th><th>Famille</th><th>APS</th><th>Du</th><th>Au</th><th>Séances</th></tr>${cy}</table>
+<p style="font-size:8pt">Dates calculées à partir de l’emploi du temps, des dates des cycles et du calendrier des vacances${P.ferMode==="sauter"?" ; les jours fériés sont sautés":" ; un créneau tombant un jour férié reste compté et porte la remarque du jour férié (comme TATABO3)"}. Objectifs formulés pour l’élève (verbe + intérêt + critère), identiques à ceux des fiches de séance générées.</p>
+<div class="cft"><span>Cahier de texte d’EPS · ${esc(P.ens)} · ${esc(P.etab)} · ${esc(P.annee)}</span><span>Fiches EPS · p. {n}</span></div></div>`}
+function cahHTMLPages(P,data,cover){const pg=(cover?[cahCover(P)]:[]).concat(cahPages(P,data));return pg.map((h,i)=>h.replace("{n}",i+1))}
+function cahDocHTML(P,data,cover){return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Cahier de texte EPS ${esc(P.annee)}</title><style>${CAH_CSS}body{margin:0;background:#888}@media screen{.cpg{margin:8px auto;box-shadow:0 2px 8px rgba(0,0,0,.3)}}@media print{body{background:#fff}}</style></head><body>${cahHTMLPages(P,data,cover).join("")}</body></html>`}
+/* ---------- exports ---------- */
+function cahRowsFlat(data){const out=[];data.forEach(d=>d.seances.forEach(se=>se.rows.forEach(r=>out.push({cycle:`C${d.ci+1} ${apsTitle(d.aps)}`,niv:d.niv,s:se.lab[0],classe:r.classe,date:r.date?dFr(r.date):"",obj:se.obj,rem:r.rem||""}))));return out}
+function cahCSV(data){const q=v=>/[";\n]/.test(v)?`"${String(v).replace(/"/g,'""')}"`:v;return "\ufeff"+["Cycle;Niveau;Séance;Classe;Date;Objectif;Remarque"].concat(cahRowsFlat(data).map(r=>[r.cycle,r.niv,r.s,r.classe,r.date,r.obj,r.rem].map(q).join(";"))).join("\r\n")}
+function cahTSV(data){return data.map(d=>`Cycle ${d.ci+1} : ${apsTitle(d.aps)} · ${d.niv}\n`+d.seances.map(se=>`${se.lab[0]}\t${se.obj}`).join("\n")).join("\n\n")}
+async function cahDocx(P,data){const TW=10772,ws=pcts(TW,[10,12.5,14.5,44,19]),N="0D2B52",b=[],sz=15,t=(x,o)=>wr(x,Object.assign({sz},o||{}));
+ Object.assign(DC,{LN:"C8D1DD"});
+ data.forEach((d,di)=>{const len=d.seances.length;for(let p=0;p*5<len;p++){if(di||p)b.push(`<w:p><w:r><w:br w:type="page"/></w:r></w:p>`);
+  b.push(wp(wr(`CYCLE ${d.ci+1} : ${apsTitle(d.aps).toUpperCase()}${p?" (suite)":""}`,{b:true,i:true,sz:30,color:N}),{bb:"E8711A",bbsz:18}));
+  b.push(wp(wr(`DU ${dFr(d.cy.du)} AU ${dFr(d.cy.au)} · ${d.niv} : ${d.classes.join(" · ")}`,{b:true,sz:17,color:N}),{before:60}));
+  b.push(wp(wr("TO = test d’observation · TB = test bilan · classes dans l’ordre de passage de la semaine · date en gras : séance effectuée · objectifs générés par Fiches EPS (OP 2007).",{sz:13,color:"334455"}),{before:40}));
+  const rows=[["Séances","Classe","Dates","Objectifs","Remarques"].map((h,i)=>wc(wp(wr(h.toUpperCase(),{b:true,sz:14,color:"FFFFFF"}),{jc:"center"}),{w:ws[i],fill:N,v:"center"})).join("")];
+  d.seances.slice(p*5,p*5+5).forEach(se=>se.rows.forEach((r,i)=>{rows.push([
+   wc(i?wp(""):wp(wr(se.lab[0],{b:true,sz:26,color:N}),{jc:"center"})+(se.lab[1]?wp(wr(se.lab[1],{sz:12,color:"E8711A"}),{jc:"center"}):""),{w:ws[0],fill:"EEF3F9",vm:i?"cont":"restart",v:"center"}),
+   wc(wp(t(r.classe,{b:true})),{w:ws[1],v:"center"}),wc(wp(t(r.date?dDay(r.date)+" "+dFr(r.date):"",{b:!!(r.done||(r.date&&r.date<=today())),color:(r.done||(r.date&&r.date<=today()))?N:"7B8794"}),{jc:"center"}),{w:ws[2],v:"center"}),
+   wc(i?wp(""):wp(t(se.obj,{color:"14263F"})),{w:ws[3],vm:i?"cont":"restart"}),wc(wp(t(r.rem||"",{sz:13})),{w:ws[4],v:"center"})].join(""))}));
+  b.push(wp("",{sz:8}),wt(ws,rows,{hdr:true,hmin:(p+1)*5>=len?400:460}));
+  if((p+1)*5>=len)b.push(wp("",{before:300}),wt(pcts(TW,[50,50]),[wc(wp(wr("LE DIRECTEUR",{b:true,sz:18,color:N})),{w:TW/2})+wc(wp(wr("L’INSPECTEUR",{b:true,sz:18,color:N})),{w:TW/2}),wc(wp(wr("(Signature)",{sz:13})),{w:TW/2})+wc(wp(wr("(Signature)",{sz:13})),{w:TW/2})],{nob:true}),wp(wr(P.ens,{b:true,i:true,sz:20,color:"2F6DB5"}),{jc:"center",before:200}))}});
+ return docxPackage(b.join(""),[],false)}
+/* ===================== UI : MON PROFIL / MES CLASSES · CAHIER DE TEXTE ===================== */
+const CAH_UI={ci:"all",niv:"all",cover:true};
+function profPane(){return $id("pProf")}
+function pInp(path,type,extra){const v=getP(PROF,path);return `<input data-pp="${path}" type="${type||"text"}" value="${esc(v==null?"":v)}" ${extra||""}>`}
+function pSel(path,opts){const v=String(getP(PROF,path));return `<select data-pp="${path}">${opts.map(o=>{const [val,lab]=Array.isArray(o)?o:[o,o];return `<option value="${esc(val)}" ${String(val)===v?"selected":""}>${esc(lab)}</option>`}).join("")}</select>`}
+function renderProfile(){const P=profLoad(),nivs=[...new Set(P.classes.map(c=>c.niv))];
+ const cls=P.classes.map((c,i)=>`<tr><td>${pInp(`classes.${i}.nom`)}</td><td>${pSel(`classes.${i}.niv`,NIVEAUX)}</td><td>${pInp(`classes.${i}.eff`,"number",'min="1" max="60"')}</td><td>${pInp(`classes.${i}.G`,"number",'min="0"')}</td><td>${pInp(`classes.${i}.F`,"number",'min="0"')}</td><td>${pInp(`classes.${i}.col`,"color")}</td><td>${pInp(`classes.${i}.debut`,"date")}</td><td><button class="mini" data-pdel="classes.${i}" title="Retirer">✕</button></td></tr>`).join("");
+ const cell=(d,h)=>{const t=P.tt.find(x=>x.d===d&&x.h===h);return `<td><select data-tt="${d}|${h}"><option value="">—</option>${P.classes.map(c=>`<option ${t&&t.c===c.nom?"selected":""}>${esc(c.nom)}</option>`).join("")}</select></td>`};
+ const tt=TT_HOURS.map(h=>`<tr><th>${h}</th>${DAYS.map((_,d)=>cell(d,h)).join("")}</tr>`).join("");
+ const hours=P.classes.map(c=>`${esc(c.nom)} : ${P.tt.filter(t=>t.c===c.nom).length} h`).join(" · ");
+ const vac=P.vac.map((v,i)=>`<tr><td>${pInp(`vac.${i}.nom`)}</td><td>${pInp(`vac.${i}.du`,"date")}</td><td>${pInp(`vac.${i}.au`,"date")}</td><td>${pSel(`vac.${i}.type`,["Vacances","Jour férié"])}</td><td><button class="mini" data-pdel="vac.${i}" title="Retirer">✕</button></td></tr>`).join("");
+ const cyc=P.cycles.map((c,i)=>`<tr><td><b>C${i+1}</b></td><td>${pSel(`cycles.${i}.aps`,AUTO_APS)}</td><td>${pInp(`cycles.${i}.du`,"date")}</td><td>${pInp(`cycles.${i}.au`,"date")}</td><td>${pSel(`cycles.${i}.len`,[[10,"10"],[12,"12"]])}</td>${nivs.map(n=>`<td>${OP[n]?pSel(`cycles.${i}.mods.${n}`,OP[n].modules.map((m,k)=>[k,m.n+" : "+m.nom])):""}</td>`).join("")}<td><button class="mini" data-pdel="cycles.${i}" title="Retirer">✕</button></td></tr>`).join("");
+ profPane().innerHTML=`<div class="profWrap">
+<div class="card"><h2><span class="n">👤</span>Mon profil<span class="sp">enregistré dans ce navigateur · pré-rempli depuis le cahier de texte TATABO3</span></h2><div class="cb"><div class="grid">
+ <div class="f"><label class="lb">Enseignant(e)</label>${pInp("ens")}</div><div class="f w2"><label class="lb">Établissement</label>${pInp("etab")}</div>
+ <div class="f"><label class="lb">AREF</label>${pInp("aref")}</div><div class="f"><label class="lb">Direction provinciale</label>${pInp("dp")}</div><div class="f"><label class="lb">Ville</label>${pInp("ville")}</div><div class="f"><label class="lb">Année scolaire</label>${pInp("annee")}</div></div></div></div>
+<div class="card"><h2><span class="n">🏫</span>Mes classes<span class="sp">${P.classes.length} classes · ${P.classes.reduce((a,c)=>a+(+c.eff||0),0)} élèves · le choix d’une classe règle le niveau et l’effectif de la fiche</span></h2><div class="cb ptab">
+ <table class="pt"><tr><th>Classe</th><th>Niveau</th><th>Effectif</th><th>G</th><th>F</th><th>Couleur</th><th>Début des cours</th><th></th></tr>${cls}</table>
+ <p class="hint">G / F : répartition à vérifier (par défaut moitié-moitié). « Début des cours » : à remplir seulement si la classe commence après le début du premier cycle.</p><button class="btn sm ghost" data-pnew="classes">＋ Nouvelle classe</button></div></div>
+<div class="card"><h2><span class="n">🗓</span>Emploi du temps hebdomadaire<span class="sp">créneaux d’1 h</span></h2><div class="cb ptab"><table class="pt tt"><tr><th>Horaire</th>${DAYS.map(d=>`<th>${d}</th>`).join("")}</tr>${tt}</table><p class="hint">${hours}</p></div></div>
+<div class="card"><h2><span class="n">🏖</span>Vacances et jours fériés<span class="sp">${P.vac.length} dates</span></h2><div class="cb ptab"><table class="pt"><tr><th>Nom</th><th>Du</th><th>Au</th><th>Type</th><th></th></tr>${vac}</table>
+ <div class="f" style="max-width:520px;margin-top:8px"><label class="lb">Créneau tombant un jour férié</label>${pSel("ferMode",[["garder","compté comme séance, avec la remarque du jour férié (comme TATABO3)"],["sauter","sauté : la séance passe au créneau suivant"]])}</div>
+ <button class="btn sm ghost" data-pnew="vac">＋ Nouvelle date</button></div></div>
+<div class="card"><h2><span class="n">🔁</span>Répartition cyclique<span class="sp">le choix d’un cycle règle l’APS, le module, l’OTC et l’OTI (OP 2007)</span></h2><div class="cb ptab"><table class="pt cyc"><tr><th>Cycle</th><th>APS</th><th>Du</th><th>Au</th><th>Séances</th>${nivs.map(n=>`<th>Module ${esc(n)}</th>`).join("")}<th></th></tr>${cyc}</table>
+ <button class="btn sm ghost" data-pnew="cycles">＋ Nouveau cycle</button></div></div>
+<div class="card"><h2><span class="n">📒</span>Registre<span class="sp">${Object.values(P.reg||{}).filter(r=>r.date||r.rem).length} séances avec date effectuée ou remarque</span></h2><div class="cb">
+ <p class="hint">Dates effectuées et remarques reprises du cahier TATABO3 (séances de septembre–octobre faites selon l’ancien emploi du temps, absences, mauvais temps, réunions). Elles se modifient dans l’onglet « Cahier de texte ».</p>
+ <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm ghost" id="pRegClear">Vider le registre</button><button class="btn sm ghost" id="pReset">Rétablir les données du cahier TATABO3</button><button class="btn sm" data-tabgo="pCah">📒 Voir le cahier de texte</button></div></div></div></div>`}
+function profNewRow(k){const P=profLoad();if(k==="classes")P.classes.push({nom:"Nouvelle classe",niv:"1BAC",eff:40,G:20,F:20,col:"#2f6db5",debut:""});
+ else if(k==="vac")P.vac.push({nom:"Nouvelle date",du:"",au:"",type:"Jour férié"});
+ else if(k==="cycles"){const l=P.cycles[P.cycles.length-1];P.cycles.push({aps:AUTO_APS[0],du:l?l.au:"",au:"",len:10,mods:Object.fromEntries(Object.keys(OP).map(n=>[n,0]))})}}
+document.addEventListener("change",e=>{const t=e.target;if(!t.closest||!t.closest("#pProf"))return;const P=profLoad();
+ if(t.dataset.pp){let v=t.value;if(t.type==="number")v=v===""?"":+v;const path=t.dataset.pp,old=getP(P,path);
+  if(/^classes\.\d+\.nom$/.test(path)){P.tt.forEach(x=>{if(x.c===old)x.c=v});Object.keys(P.reg).forEach(k=>{const a=k.split("|");if(a[1]===old){P.reg[[a[0],v,a[2]].join("|")]=P.reg[k];delete P.reg[k]}})}
+  setP(P,path,/\.len$|\.mods\./.test(path)?+v:v);
+  if(/^classes\.\d+\.eff$/.test(path)){const c=getP(P,path.replace(/\.eff$/,""));c.G=Math.ceil(v/2);c.F=Math.floor(v/2)}
+  profSave();reProf()}
+ else if(t.dataset.tt){const [d,h]=t.dataset.tt.split("|");P.tt=P.tt.filter(x=>!(x.d===+d&&x.h===h));if(t.value)P.tt.push({c:t.value,d:+d,h});profSave();reProf()}});
+let _rp=0;function reProf(){clearTimeout(_rp);_rp=setTimeout(renderProfile,0)}
+document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+ if(b.closest("#pProf")){const P=profLoad();
+  if(b.dataset.pdel){const [k,i]=b.dataset.pdel.split(".");const it=P[k][+i];ask(`Retirer « ${it.nom||"C"+(+i+1)} » ?`,()=>{P[k].splice(+i,1);if(k==="classes")P.tt=P.tt.filter(x=>x.c!==it.nom);profSave();renderProfile()},"Retirer");return}
+  if(b.dataset.pnew){profNewRow(b.dataset.pnew);profSave();renderProfile();return}
+  if(b.id==="pRegClear"){ask("Vider le registre (dates effectuées et remarques) ?",()=>{P.reg={};profSave();renderProfile()},"Vider");return}
+  if(b.id==="pReset"){ask("Rétablir toutes les données du cahier TATABO3 (profil, classes, emploi du temps, vacances, cycles, registre) ?",()=>{PROF=profDefault();profSave();renderProfile()},"Rétablir");return}}
+ if(b.dataset.tabgo){const tb=document.querySelector(`.tab[data-tab="${b.dataset.tabgo}"]`);if(tb)tb.click();return}
+ if(b.dataset.copy!=null&&b.closest("#pCah")){copyText(b.dataset.copy).then(ok=>toast(ok?"Objectif copié : colle-le dans TATABO3":"Copie impossible"));return}
+ if(b.closest("#pCah")){const P=profLoad();const data=()=>cahData(P,CAH_UI.ci==="all"?null:[+CAH_UI.ci],CAH_UI.niv==="all"?null:[CAH_UI.niv]);
+  if(b.id==="cPrint")cahPrint(P,data());else if(b.id==="cDocx")cahDocx(P,data()).then(bl=>saveFiles([{name:cahFileName(P)+".docx",blob:bl}]));
+  else if(b.id==="cCsv")saveText(cahFileName(P)+"_objectifs.csv",cahCSV(data()),"text/csv;charset=utf-8");
+  else if(b.id==="cCopy")copyText(cahTSV(data())).then(ok=>toast(ok?"Objectifs copiés (séance ⇥ objectif)":"Copie impossible"));
+  else if(b.id==="cHtml")saveText(cahFileName(P)+"_imprimable.html",cahDocHTML(P,data(),CAH_UI.cover),"text/html;charset=utf-8")}});
+function cahFileName(P){const sel=CAH_UI.ci==="all"?"":`_C${+CAH_UI.ci+1}`;return (`Cahier_de_texte_EPS_${(P.annee||"").replace(/[–\s]+/g,"-")}${sel}${CAH_UI.niv==="all"?"":"_"+CAH_UI.niv}`).replace(/[^\wÀ-ÿ-]+/g,"_")}
+function cahPrint(P,data){const html=cahDocHTML(P,data,CAH_UI.cover);
+ if(ENV.restricted){saveFiles([{name:cahFileName(P)+"_imprimable.html",blob:new Blob([html],{type:"text/html;charset=utf-8"})}],{panel:true});toast("Impression bloquée ici : version imprimable proposée (A4 portrait)");return}
+ let fr=$id("cahFrame");if(fr)fr.remove();fr=document.createElement("iframe");fr.id="cahFrame";fr.style.cssText="position:fixed;right:0;bottom:0;width:0;height:0;border:0";document.body.appendChild(fr);
+ fr.onload=()=>setTimeout(()=>{try{fr.contentWindow.focus();fr.contentWindow.print()}catch(e){toast("Impression impossible ici : ouvre le fichier dans Chrome")}},150);fr.srcdoc=html}
+/* Cahier : aperçu + registre éditable (date effectuée, remarque) */
+function renderCahier(){const P=profLoad(),pane=$id("pCah");const nivs=[...new Set(P.classes.map(c=>c.niv))];
+ const data=cahData(P,CAH_UI.ci==="all"?null:[+CAH_UI.ci],CAH_UI.niv==="all"?null:[CAH_UI.niv]);
+ const pages=cahHTMLPages(P,data,CAH_UI.cover&&CAH_UI.ci==="all");
+ pane.innerHTML=`<div class="cahBar card"><div class="cb"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+ <div class="f"><label class="lb">Cycle</label><select id="cCi"><option value="all">Tous les cycles</option>${P.cycles.map((c,i)=>`<option value="${i}" ${String(CAH_UI.ci)===String(i)?"selected":""}>C${i+1} · ${esc(apsTitle(c.aps))} (${dFr(c.du)} – ${dFr(c.au)})</option>`).join("")}</select></div>
+ <div class="f"><label class="lb">Niveau</label><select id="cNiv"><option value="all">Tous</option>${nivs.map(n=>`<option ${CAH_UI.niv===n?"selected":""}>${esc(n)}</option>`).join("")}</select></div>
+ <label class="hint" style="display:flex;gap:4px;align-items:center"><input type="checkbox" id="cCov" ${CAH_UI.cover?"checked":""} style="width:auto">page de garde</label>
+ <button class="btn" id="cPrint">🖨 Imprimer / PDF (A4 portrait)</button><button class="btn" id="cDocx">⬇ Word (.docx)</button><button class="btn ghost" id="cCopy">📋 Copier les objectifs</button><button class="btn ghost" id="cCsv">⬇ CSV (TATABO3)</button></div>
+ <p class="hint" style="margin:8px 0 0">${data.reduce((a,d)=>a+d.seances.length,0)} séances · objectifs identiques à ceux des fiches générées (même niveau, APS, module, n° de séance). Cliquez une date pour noter la date effectuée ; 📋 copie un objectif pour le coller dans TATABO3.</p></div></div>
+ <div class="cahPrev">${pages.join("")}</div>`;
+ pane.querySelectorAll("td.dt,td.rm").forEach(td=>{td.title=td.classList.contains("dt")?"Cliquer : date effectuée":"Cliquer : remarque";td.style.cursor="pointer"})}
+document.addEventListener("change",e=>{const t=e.target;if(!t.closest||!t.closest("#pCah"))return;
+ if(t.id==="cCi")CAH_UI.ci=t.value;else if(t.id==="cNiv")CAH_UI.niv=t.value;else if(t.id==="cCov")CAH_UI.cover=t.checked;else return;renderCahier()});
+document.addEventListener("click",e=>{const td=e.target.closest&&e.target.closest("#pCah td[data-k]");if(!td)return;const P=profLoad(),key=td.dataset.k,[c,cl,sn]=key.split("|"),plan=cahPlan(P,+c-1)[cl];if(!plan)return;
+ const row=plan[+sn-1],isD=td.classList.contains("dt"),title=`${cl} · séance ${sn} · cycle ${c}`,save=fn=>{const r=P.reg[key]||{};fn(r);if(Object.keys(r).length)P.reg[key]=r;else delete P.reg[key];profSave();renderCahier()};
+ if(isD){let val=row.date||"";uiDialog({title,okLabel:"Enregistrer",html:`<p class="hint">Date prévue d’après l’emploi du temps : ${row.planned?dDay(row.planned)+" "+dFr(row.planned):"aucun créneau"}</p><input type="date" id="rgD" value="${esc(val)}"><p class="hint">Vider le champ pour revenir à la date prévue.</p>`}).then(ok=>{if(ok)save(r=>{if(val&&val!==row.planned)r.date=val;else delete r.date})});
+  setTimeout(()=>{const i=$id("rgD");if(i)i.oninput=i.onchange=e2=>{val=e2.target.value}},0)}
+ else uiDialog({title,msg:"Remarque (absence, mauvais temps, réunion…)",input:row.rem||"",okLabel:"Enregistrer"}).then(v=>{if(v!=null)save(r=>{r.rem=v})})});
+const style0=document.createElement("style");style0.textContent=CAH_CSS.replace(/@page\{[^}]*\}/,"");document.head.appendChild(style0);
+/* Fiche : choix de la classe et du cycle depuis le profil */
+function ficheFromProfile(f,o){const P=profLoad();o=o||{};
+ if(o.cls!=null){const cl=clsOf(P,o.cls);f.classe=o.cls;if(cl){if(f.niveau!==cl.niv){f.niveau=cl.niv;f.moduleIdx="";f.module="";f.competences=f.competences.filter(c=>c.custom)}f.effG=String(cl.G);f.effF=String(cl.F);f.etab=P.etab;f.ens=P.ens}}
+ if(o.cyc!=null)f.cyc=o.cyc;
+ const cy=P.cycles[(+f.cyc||0)-1];
+ if(cy){const aps=CAH_APS[cy.aps]||cy.aps,b=BANK[aps];if(b){f.aps=aps;f.famille=b.fam}f.cycleLen=String(cy.len||10);if(+f.seance>+f.cycleLen)f.seance=f.cycleLen;
+  const op=OP[f.niveau];if(op){const mi=+((cy.mods||{})[f.niveau]||0),m=op.modules[mi];if(String(f.moduleIdx)!==String(mi)||!f.competences.length){f.moduleIdx=String(mi);f.module=m?m.nom:"";f.competences=(m?m.comp.map(x=>({t:x,on:false})):[]).concat(f.competences.filter(c=>c.custom))}f.oti=op.oti;f.otc=op.otc[f.famille]||f.otc}
+  const pl=f.classe&&cahPlan(P,+f.cyc-1)[f.classe];const r=pl&&pl[(+f.seance||1)-1];if(r&&r.date)f.date=r.date}
+ return f}
+ed.addEventListener("change",e=>{const t=e.target;
+ if(t.id==="aCls"){ficheFromProfile(cur,{cls:t.value});changed(true)}
+ else if(t.id==="aCyc"){ficheFromProfile(cur,{cyc:t.value});changed(true)}
+ else if(t.id==="aSea"&&cur.cyc&&cur.classe){ficheFromProfile(cur,{});changed(true)}});
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.tab==="pProf")renderProfile();else if(b.dataset.tab==="pCah")renderCahier()}));
 /* ===================== DÉMARRAGE ===================== */
 initBanner();
 try{loadAll()}catch(e){fiches=[];cur=newFiche();fiches.push(cur)}
