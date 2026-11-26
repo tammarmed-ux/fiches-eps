@@ -45,7 +45,6 @@ body.side-collapsed .side{width:0;min-width:0;padding:0;border:none;overflow:hid
 .tab.on{background:var(--b);color:#fff;border-color:var(--b)}
 .pane{display:none}
 .pane.on{display:block}
-@media (min-width:1600px){.tabs{display:none}.panes{display:grid;grid-template-columns:minmax(560px,46%) 1fr;gap:14px;align-items:start}.pane{display:block}#pPrev{position:sticky;top:66px}}
 .card{background:#fff;border:1px solid #dde4ec;border-radius:var(--rad);margin-bottom:14px;box-shadow:0 1px 3px rgba(20,40,70,.05);overflow:hidden}
 .card>h2{margin:0;padding:10px 14px;font-size:15px;background:var(--l);color:var(--b);display:flex;align-items:center;gap:8px;border-bottom:1px solid #cfdeee}
 .card>h2 .n{background:var(--b);color:#fff;border-radius:50%;width:22px;height:22px;display:grid;place-items:center;font-size:12px;flex:none}
@@ -156,14 +155,11 @@ textarea{resize:vertical;min-height:58px;line-height:1.35}
 <body>
 <div id="frameBanner" class="fbanner" hidden>⚠ <b>Pour télécharger, ouvre ce fichier dans Chrome (Fichier &gt; Ouvrir)</b> : cet aperçu peut bloquer les téléchargements, l’impression et l’enregistrement. <button class="btn sm" id="bOpenTab">Ouvrir dans un nouvel onglet</button> <button class="btn sm ghost" id="bSaveApp">Enregistrer l’application</button></div>
 <header class="top">
-  <button class="tb" id="bSide" title="Historique des fiches" aria-expanded="true" aria-controls="side">☰ Historique</button>
-  <div class="brand"><span class="logo">EPS</span><span>Fiches de séance <small>· OP 2007 (lycée) / OP 2009 (collège)</small></span></div>
+  <button class="tb" id="bSide" title="Mes fiches enregistrées (historique et recherche)" aria-expanded="false" aria-controls="side">📂 <span class="lbl">Mes fiches</span></button>
+  <div class="brand"><span class="t3wm" id="t3wm"></span><span class="bname">Fiches EPS</span></div>
+  <nav class="tabs" id="mainNav" aria-label="Menu principal"><button class="tab on" data-tab="pHome"><span class="ti">🏠</span><span class="tl">Aujourd’hui</span></button><button class="tab" data-tab="pEdit"><span class="ti">📚</span><span class="tl">Mes cycles</span></button><button class="tab" data-tab="pCah"><span class="ti">📒</span><span class="tl">Cahier de texte</span></button><button class="tab" data-tab="pProf"><span class="ti">👤</span><span class="tl">Mon profil</span></button></nav>
   <span class="saved" id="savedLbl"></span>
-  <button class="tb" id="bNew">＋ Nouvelle fiche</button>
-  <button class="tb pri" id="bWord">⬇ Télécharger Word (.docx)</button>
-  <button class="tb pri" id="bPrint">🖨 Imprimer / PDF</button>
-  <button class="tb pri" data-act="zipCycle">📦 Télécharger tout le cycle</button>
-  <button class="tb" data-act="printCycle">🖨️ Imprimer tout le cycle</button>
+  <div class="who" id="whoLbl"></div>
 </header>
 <div class="layout">
   <aside class="side" id="side" aria-label="Historique des fiches">
@@ -179,17 +175,25 @@ textarea{resize:vertical;min-height:58px;line-height:1.35}
   </aside>
   <div class="sideMask" id="sideMask"></div>
   <main class="main">
-    <div class="tabs"><button class="tab on" data-tab="pEdit">✎ Éditeur</button><button class="tab" data-tab="pPrev">👁 Aperçu A4</button><button class="tab" data-tab="pProf">👤 Mon profil / Mes classes</button><button class="tab" data-tab="pCah">📒 Cahier de texte</button></div>
     <div class="panes">
-      <section class="pane on" id="pEdit"></section>
-      <section class="pane" id="pPrev">
-        <div class="prevwrap">
-          <div class="prevbar"><b style="color:var(--b)">Aperçu A4 paysage</b><button class="btn sm ghost" id="bReal">🔍 Taille réelle</button><span class="warn" id="pwarn"></span></div>
-          <div id="scaleBox"><div class="scaler" id="scaler"><div class="page" id="page"></div></div></div>
-        </div>
-      </section>
-      <section class="pane" id="pProf"></section>
+      <section class="pane on" id="pHome"></section>
+      <section class="pane" id="pEdit"><div class="edGrid"><div id="edCol"></div>
+        <aside id="prevCol" aria-label="Aperçu et export">
+          <div class="card prevCard"><h2><span class="n">👁</span>Aperçu de la fiche<span class="pBadge" id="pBadge"></span></h2>
+           <div class="cb">
+            <div class="expZone" id="expZone">
+             <div class="expMain"><button class="btn big o" id="bPrint">🖨 Imprimer / PDF</button><button class="btn big n" id="bWord">⬇ Word (.docx)</button></div>
+             <div class="expMore"><button class="btn ghost" data-act="zipCycle">📦 Tout le cycle (fiches + projet, ZIP)</button><button class="btn ghost" data-act="printCycle">🖨 Imprimer tout le cycle</button><button class="btn ghost" id="aAlt">↻ Autre proposition</button></div>
+            </div>
+            <div class="prevwrap">
+             <div class="prevbar"><span class="secLeg" id="secLeg"></span><button class="btn sm ghost" id="bReal" title="Afficher la fiche en taille réelle">🔍 Zoom</button><span class="warn" id="pwarn"></span></div>
+             <div id="scaleBox" title="Cliquer pour zoomer"><div class="scaler" id="scaler"><div class="page" id="page"></div></div></div>
+            </div>
+            <div id="secView"></div>
+           </div></div>
+        </aside></div></section>
       <section class="pane" id="pCah"></section>
+      <section class="pane" id="pProf"></section>
     </div>
   </main>
 </div>
@@ -743,14 +747,19 @@ function defPhases(){return{
  ini:{duree:"10’ à 15’",but:"Savoir s’échauffer et échauffer l’autre.",contenu:"Prise en main : explication du déroulement de la séance.\nÉchauffement général.\nÉchauffement spécifique.",consignes:"Adopter un mode de regroupement spécifique à chacun des groupes.",criteres:"Progressivité\nAdaptabilité\nSpécificité\nVariabilité",schema:"",sketch:null},
  fond:{duree:"35’ à 45’",but:"",situations:[newSit()],reference:"",consSecu:"",consOrga:"",critQuant:"",critQual:"",schema:"",sketch:null},
  fin:{duree:"5’ à 10’",but:"Retour au calme",contenu:"Étirements.\nBilan de la séance.\nAnnoncer l’objectif de la prochaine séance.",consignes:"Éviter les temps de ressort lors des étirements.",criteres:"Questions / réponses.\nAvoir les feed-back des élèves.",schema:"",sketch:null}}}
-function newFiche(base){const f={id:uid(),updated:Date.now(),etab:"",ens:"Mohamed TAMMAR",classe:"",date:today(),effG:"",effF:"",niveau:"",moduleIdx:"",module:"",famille:"",famillePerso:"",aps:"",seance:"1",materiel:"",oti:"",otc:"",competences:[],objSeq:"",objMode:"builder",objVerbe:"",objContenu:"",objCritere:"",objLibre:"",phases:defPhases(),bilan:"",cycleLen:"10",variant:0,autoGen:false};
- if(base){f.etab=base.etab||"";f.ens=base.ens||f.ens;}return f}
+/* Identité (enseignant, établissement) : reprise du profil « Mon profil » */
+function profIdent(){try{const P=profLoad();return{ens:P.ens||"E. Tammar Mohamed",etab:P.etab||""}}catch(e){return{ens:"E. Tammar Mohamed",etab:""}}}
+const OLD_ENS=/^(mohamed tammar|tammar mohamed)$/i;
+function newFiche(base){const I=profIdent();const f={id:uid(),updated:Date.now(),etab:I.etab,ens:I.ens,classe:"",date:today(),effG:"",effF:"",niveau:"",moduleIdx:"",module:"",famille:"",famillePerso:"",aps:"",seance:"1",materiel:"",oti:"",otc:"",competences:[],objSeq:"",objMode:"builder",objVerbe:"",objContenu:"",objCritere:"",objLibre:"",phases:defPhases(),bilan:"",cycleLen:"10",variant:0,autoGen:false};
+ if(base){f.etab=base.etab||f.etab;f.ens=base.ens||f.ens;}return f}
 function normalize(f){const o=Object.assign(newFiche(),f||{});const p=defPhases();o.phases=o.phases||{};
  for(const k of["ini","fond","fin"])o.phases[k]=Object.assign(p[k],o.phases[k]||{});
  if(!Array.isArray(o.phases.fond.situations)||!o.phases.fond.situations.length)o.phases.fond.situations=[newSit()];
  o.phases.fond.situations=o.phases.fond.situations.map(s=>Object.assign(newSit(),s));
  if(!Array.isArray(o.competences))o.competences=[];o.id=o.id||uid();o.variant=+o.variant||0;o.cycleLen=String(o.cycleLen)==="12"?"12":"10";
  for(const k of["etab","ens","classe","date","effG","effF","niveau","moduleIdx","module","famille","famillePerso","aps","seance","materiel","oti","otc","objSeq","objVerbe","objContenu","objCritere","objLibre","bilan"])o[k]=o[k]==null?"":String(o[k]);
+ /* migration : ancien nom par défaut « Mohamed TAMMAR » et établissement vide → valeurs du profil */
+ {const I=profIdent();if(!o.ens.trim()||OLD_ENS.test(o.ens.trim()))o.ens=I.ens;if(!o.etab.trim())o.etab=I.etab}
  return o}
 
 let fiches=[],cur=null;
@@ -796,7 +805,7 @@ function renderEditor(){
  const f=cur,op=OP[f.niveau];
  const mods=op?op.modules:[];
  const apsList=APS[f.famille]||[];
- const h=[autoPanelHTML()];
+ const h=[];
  h.push(`<div class="card"><h2><span class="n">1</span>Informations générales<span class="sp">${esc(ficheTitle(f))}</span></h2><div class="cb"><div class="grid">
   <div class="f w2"><label class="lb">Établissement</label>${inp("etab","Nom du lycée / collège")}</div>
   <div class="f"><label class="lb">Enseignant</label>${inp("ens")}</div>
@@ -804,12 +813,9 @@ function renderEditor(){
   <div class="f"><label class="lb">Date</label>${inp("date","","date")}</div>
   <div class="f"><label class="lb">Effectif garçons (G)</label>${inp("effG","ex. 20","number")}</div>
   <div class="f"><label class="lb">Effectif filles (F) <span class="hint">classe de 35 à 42 élèves ; 40 si vide</span></label>${inp("effF","ex. 20","number")}</div>
-  <div class="f"><label class="lb">Niveau</label><select id="selNiv"><option value="">— Choisir —</option>${NIVEAUX.map(n=>`<option value="${n}" ${f.niveau===n?"selected":""}>${OP[n].label}</option>`).join("")}</select></div>
-  <div class="f w2"><label class="lb">Module</label><select id="selMod" ${op?"":"disabled"}><option value="">${op?"— Choisir le module —":"Choisir d’abord le niveau"}</option>${mods.map((m,i)=>`<option value="${i}" ${String(f.moduleIdx)===String(i)?"selected":""}>${esc(m.n+" : "+m.nom)}</option>`).join("")}</select></div>
   <div class="f"><label class="lb">Famille d’APS</label><select id="selFam"><option value="">— Choisir —</option>${FAMILLES.map(x=>`<option ${f.famille===x?"selected":""}>${x}</option>`).join("")}</select></div>
   ${f.famille==="Autre"?`<div class="f"><label class="lb">Famille (saisie libre)</label>${inp("famillePerso","ex. Sports de combat")}</div>`:""}
-  <div class="f"><label class="lb">APS support</label><input type="text" data-b="aps" list="apsDL" value="${esc(f.aps)}" placeholder="ex. Volley-ball"><datalist id="apsDL">${apsList.map(a=>`<option value="${esc(a)}">`).join("")}</datalist></div>
-  <div class="f"><label class="lb">N° de séance</label><select data-b="seance">${Array.from({length:parseInt(f.cycleLen)||10},(_,i)=>`<option ${String(f.seance)===String(i+1)?"selected":""}>${i+1}</option>`).join("")}</select></div>
+  <div class="f"><label class="lb">APS support <span class="hint">autre APS : saisie libre</span></label><input type="text" data-b="aps" list="apsDL" value="${esc(f.aps)}" placeholder="ex. Volley-ball"><datalist id="apsDL">${apsList.map(a=>`<option value="${esc(a)}">`).join("")}</datalist></div>
   ${apsList.length?`<div class="f full"><span class="hint">APS proposées : ${apsList.map(a=>`<button class="chip" data-aps="${esc(a)}">${esc(a)}</button>`).join(" ")}</span></div>`:""}
   <div class="f full"><label class="lb">Matériel</label>${inp("materiel","ex. Chronomètre + ballons de VB + sifflet")}
    <div class="chips">${MATERIEL.map(m=>`<button class="chip" data-mat="${esc(m)}">+ ${esc(m)}</button>`).join("")}</div></div>
@@ -877,7 +883,7 @@ function renderEditor(){
   ${schemaBlock("fin")}</div></div></div>`);
  h.push(`<div class="card" id="cohCard"><h2><span class="n">✓</span>Vérification de la cohérence<span class="sp">niveau ↔ OTI ↔ OTC ↔ séquence ↔ séance ↔ but ↔ situations ↔ critères</span><span class="cohBadge"></span></h2><div class="cb" id="cohBox"></div></div>`);
  h.push(`<div class="card"><h2><span class="n">7</span>Bilan et observations de la séance</h2><div class="cb">${ta("bilan","À remplir après la séance (facultatif)",2)}</div></div>`);
- $("#pEdit").innerHTML=h.join("");
+ $("#edCol").innerHTML=wizHTML()+`<details class="adv" id="advBox" ${SK.adv?"open":""}><summary>▸ Modifier en détail <span class="hint">phases, situations, consignes, critères, schémas…</span></summary>${autoPanelHTML()}`+h.join("")+`</details>`;
  updObjPrev();autoGrowAll();renderCheck();
 }
 function updObjPrev(){const el=$("#objPrev");if(!el)return;const f=cur;
@@ -1009,7 +1015,8 @@ window.addEventListener("resize",fitPreview);
 let sideFilter="";
 function ficheHay(f){return [f.aps,f.niveau,f.seance,f.classe,f.module,f.famille,objSentence(f),ficheTitle(f)].join(" ").toLowerCase()}
 function renderList(){const ul=$("#flist"),q=(sideFilter||"").trim().toLowerCase();
- const arr=fiches.slice().sort((a,b)=>(b.updated||0)-(a.updated||0));
+ /* les fiches vides (sans APS) ne sont pas listées */
+ const arr=fiches.filter(f=>(f.aps||"").trim()).sort((a,b)=>(b.updated||0)-(a.updated||0));
  const vis=q?arr.filter(f=>ficheHay(f).includes(q)):arr;
  ul.innerHTML=vis.map(f=>{const T=pal(f.aps,f.famille),aps=f.aps||"APS ?";
   return `<li class="${f.id===cur.id?"cur":""}" style="--aps:${T.base};--apsink:${T.ink}" data-open="${f.id}">
@@ -1030,7 +1037,7 @@ $("#flist").addEventListener("click",e=>{const t=e.target.closest("[data-open],[
  else if(t.dataset.open){if(t.dataset.open===cur.id){closeSide();return}cur=fiches.find(x=>x.id===t.dataset.open)||cur;afterSwitch()}});
 const sideSearch=$("#sideSearch");if(sideSearch)sideSearch.addEventListener("input",e=>{sideFilter=e.target.value||"";renderList()});
 function isMobileSide(){return matchMedia("(max-width:900px)").matches}
-function applySideState(){const collapsed=!isMobileSide()&&STORE.getItem("eps_side_collapsed")==="1";
+function applySideState(){const collapsed=!isMobileSide()&&STORE.getItem("eps_side_collapsed")!=="0";
  document.body.classList.toggle("side-collapsed",collapsed);
  const open=isMobileSide()&&$("#side").classList.contains("open");
  const mask=$("#sideMask");if(mask)mask.classList.toggle("on",open);
@@ -1131,7 +1138,6 @@ window.addEventListener("beforeprint",()=>{if(!PRINT_CYCLE)preparePrint()});wind
 function importJSONText(txt){try{const d=JSON.parse(txt);
  let arr=Array.isArray(d)?d:(d.fiches||[d]);arr=arr.filter(x=>x&&typeof x==="object"&&x.phases).map(x=>{const n=normalize(x);if(fiches.some(y=>y.id===n.id))n.id=uid();n.updated=Date.now();return n});
  if(!arr.length)throw 0;fiches.push(...arr);cur=arr[0];afterSwitch(arr.length+" fiche(s) importée(s)");return true}catch(err){toast("Fichier JSON non reconnu");return false}}
-$("#bNew").onclick=createNewFiche;
 const bNewSide=$("#bNewSide");if(bNewSide)bNewSide.onclick=createNewFiche;
 $("#bSide").onclick=e=>{e.preventDefault();toggleSide()};
 $("#bCloseSide").onclick=e=>{e.preventDefault();isMobileSide()?closeSide():toggleSide()};
@@ -1139,9 +1145,9 @@ const sideMask=$("#sideMask");if(sideMask)sideMask.onclick=()=>closeSide();
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSide()});
 window.addEventListener("resize",applySideState);
 applySideState();
-document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===b));document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("on",p.id===b.dataset.tab));if(b.dataset.tab==="pPrev")fitPreview();else autoGrowAll()});
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===b));document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("on",p.id===b.dataset.tab));if(b.dataset.tab==="pEdit"){fitPreview();autoGrowAll()}if(typeof onTab==="function")onTab(b.dataset.tab);window.scrollTo(0,0)});
 
-$("#bReal").onclick=e=>{realSize=!realSize;e.target.textContent=realSize?"↔ Ajuster à l’écran":"🔍 Taille réelle";fitPreview()};
+$("#bReal").onclick=e=>{realSize=!realSize;e.target.textContent=realSize?"↔ Ajuster":"🔍 Zoom";fitPreview()};
 /* ===================== GÉNÉRATEUR COHÉRENT (OTC → séquences → séance → situation → critères) ===================== */
 const FAMT={ /* gabarits de situation par famille ; {R} = rapport de force du niveau */
  [SC]:{cond:"Terrain réduit, équipes de niveau homogène, situation de {R}. Rotation des rôles (joueurs, observateurs, arbitre) toutes les 5 mn.",
@@ -2978,31 +2984,10 @@ function gymEls(P,name){const t=P.t;let m=t.match(/enchaîner (.+?)(?: sans arr�
  if(m){a=m[1].includes(" : ")?m[1].split(" : ")[1]:m[1];a=a.split(/ \+ |, | puis /)}else if((m=t.match(/\((.+?)\)/))&&/par atelier|répéter/i.test(t))a=m[1].split(/, /);else a=[name];
  return a.map(x=>x.replace(/\s*\(.*?\)/g,"").trim()).filter(x=>x&&!/^la liaison prévue$/.test(x)).slice(0,4)}
 /* ===================== PANNEAU « GÉNÉRER LA FICHE AUTOMATIQUEMENT » ===================== */
-function autoPanelHTML(){const f=cur,op=OP[f.niveau],mods=op?op.modules:[],ok=!!(BANK[f.aps]&&op);
- const fams=[SC,RV,AT,GY].map(fm=>`<optgroup label="${esc(fm)}">${AUTO_APS.filter(a=>BANK[a].fam===fm).map(a=>`<option ${f.aps===a?"selected":""}>${esc(a)}</option>`).join("")}</optgroup>`).join("");
- const len=parseInt(f.cycleLen)||10;
- return `<div class="card autoCard"><h2><span class="n">⚡</span><span class="apsIco">${apsIcon(f.aps,f.famille)}</span>Générer la fiche automatiquement<span class="sp">niveau + APS + module + compétences → fiche complète</span></h2><div class="cb">
- <div class="grid">
-  ${(()=>{const P=profLoad();return `<div class="f"><label class="lb">Classe <span class="hint">Mon profil</span></label><select id="aCls"><option value="">— Choisir —</option>${P.classes.map(c=>`<option ${f.classe===c.nom?"selected":""}>${esc(c.nom)}</option>`).join("")}</select></div>
-  <div class="f w2"><label class="lb">Cycle <span class="hint">répartition cyclique</span></label><select id="aCyc"><option value="">— Choisir —</option>${P.cycles.map((c,i)=>`<option value="${i+1}" ${String(f.cyc)===String(i+1)?"selected":""}>C${i+1} · ${esc(apsTitle(c.aps))} · ${dFr(c.du)} – ${dFr(c.au)}</option>`).join("")}</select></div>`})()}
-  <div class="f"><label class="lb">Niveau</label><select id="aNiv"><option value="">— Choisir —</option>${NIVEAUX.map(n=>`<option value="${n}" ${f.niveau===n?"selected":""}>${OP[n].label}</option>`).join("")}</select></div>
-  <div class="f"><label class="lb">APS support</label><select id="aAps"><option value="">— Choisir —</option>${fams}</select></div>
-  <div class="f w2"><label class="lb">Module</label><select id="aMod" ${op?"":"disabled"}><option value="">${op?"— Choisir le module —":"Choisir d’abord le niveau"}</option>${mods.map((m,i)=>`<option value="${i}" ${String(f.moduleIdx)===String(i)?"selected":""}>${esc(m.n+" : "+m.nom)}</option>`).join("")}</select></div>
-  <div class="f"><label class="lb">N° de séance</label><select id="aSea">${Array.from({length:len},(_,i)=>`<option ${String(f.seance)===String(i+1)?"selected":""}>${i+1}</option>`).join("")}</select></div>
-  <div class="f"><label class="lb">Cycle</label><select id="aLen"><option value="10" ${len===10?"selected":""}>10 séances</option><option value="12" ${len===12?"selected":""}>12 séances</option></select></div>
-  <div class="f full"><label class="lb">Compétences visées <span class="hint">cochez-les : elles orientent les consignes et les critères (si aucune n’est cochée, le générateur en choisit 2)</span></label>
-   <div class="comp">${f.competences.length?f.competences.map((c,i)=>`<label class="it ${c.on?"on":""}" style="cursor:pointer"><input type="checkbox" data-ci="${i}" ${c.on?"checked":""}><span>${esc(c.t)}</span></label>`).join(""):`<span class="hint">Choisissez le niveau et le module.</span>`}</div></div>
- </div>
- <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-  <button class="btn" id="aGo" ${ok?"":"disabled"}>⚡ Générer la fiche</button>
-  <button class="btn ghost" id="aAlt" ${ok?"":"disabled"}>↻ Autre proposition</button>
-  <button class="btn ghost" id="genCycle" ${ok?"":"disabled"}>Créer les ${len} fiches du cycle</button>
-  <button class="btn ghost" data-act="zipCycle" ${f.niveau&&f.aps?"":"disabled"}>📦 Télécharger tout le cycle</button>
-  <button class="btn ghost" data-act="printCycle" ${f.niveau&&f.aps?"":"disabled"}>🖨️ Imprimer tout le cycle</button>
-  ${f.autoGen?`<span class="hint" style="align-self:center">Proposition n° ${(f.variant||0)+1} · tout reste modifiable ci-dessous</span>`:""}
- </div>
- ${f.aps&&!BANK[f.aps]?`<div class="hint" style="margin-top:6px">⚠ Pas encore de banque de contenus pour « ${esc(f.aps)} ». APS disponibles : ${AUTO_APS.join(", ")}.</div>`:""}
- </div></div>`}
+/* Options avancées du générateur (dans « Modifier en détail ») : la classe, le cycle et la séance se choisissent dans les 3 étapes */
+function autoPanelHTML(){const f=cur,ok=!!(BANK[f.aps]&&OP[f.niveau]);
+ return `<div class="advTools"><button class="btn" id="aGo" ${ok?"":"disabled"}>⚡ Régénérer la fiche</button>${f.autoGen?`<span class="hint">Proposition n° ${(f.variant||0)+1} · tout reste modifiable ci-dessous</span>`:""}
+ ${f.aps&&!BANK[f.aps]?`<span class="hint">⚠ Pas encore de banque de contenus pour « ${esc(f.aps)} ». APS disponibles : ${AUTO_APS.join(", ")}.</span>`:""}</div>`}
 function setNiveau(v){cur.niveau=v;cur.moduleIdx="";cur.module="";cur.competences=cur.competences.filter(c=>c.custom);applyOfficial()}
 function setModule(v){cur.moduleIdx=v;const m=OP[cur.niveau]&&OP[cur.niveau].modules[+v];cur.module=m?m.nom:"";cur.competences=(m?m.comp.map(x=>({t:x,on:false})):[]).concat(cur.competences.filter(c=>c.custom))}
 ed.addEventListener("change",e=>{const t=e.target;
@@ -3460,9 +3445,272 @@ async function brandDocxFooter(f,kind,TW){const m=brandMode();if(!m)return null;
    +`<w:tc><w:tcPr><w:tcW w:w="${w[0]}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>${wp(wr(brandLeft(c),{sz:14,color:"4B5563"}))}</w:tc>`
    +`<w:tc><w:tcPr><w:tcW w:w="${w[1]}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>${wp(pic("rIdT3a",1,p.mmW,p.mmH),{jc:"right",line:240})}</w:tc></w:tr></w:tbl>`}
  const hmm=m==="D"?4.4:p.mmH;return {xml:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr ${W_NS}>${xml}</w:ftr>`,images:imgs,hTw:Math.round(hmm*56.7)}}
+/* ===================== INTERFACE SIMPLIFIÉE ===================== */
+/* Menu à 4 entrées · Aujourd’hui / Ma semaine · fiche en 3 étapes · export unique · aperçu clair · téléphone */
+const SIMPLE_CSS=`
+.top{background:#0A3768!important;gap:12px;padding:8px 16px;flex-wrap:nowrap;min-height:52px}
+.top .brand{margin-right:4px;gap:9px;align-items:center;display:flex}
+.t3wm svg{height:19px;width:auto;display:block}
+.bname{font:700 16px Poppins,"Segoe UI",system-ui,sans-serif;color:#fff;white-space:nowrap;border-left:1px solid rgba(255,255,255,.3);padding-left:9px}
+#mainNav.tabs{margin:0 0 0 6px;display:flex;gap:4px;background:none;border:0;padding:0;position:static;box-shadow:none}
+#mainNav .tab{background:transparent;border:0;color:#c8d6ea;border-radius:10px;padding:8px 13px;font-weight:600;font-size:14px;display:flex;gap:6px;align-items:center;flex:0 0 auto;width:auto;box-shadow:none}
+#mainNav .tab.on{background:#fff;color:#0A3768}
+#mainNav .tab:hover:not(.on){background:rgba(255,255,255,.13);color:#fff}
+.top .saved{margin-left:auto}
+.who{margin-left:10px;text-align:right;font-size:12px;color:#c8d6ea;line-height:1.3;white-space:nowrap}.who b{display:block;color:#fff;font-size:13px}
+.btn.big{font-size:15.5px;padding:12px 14px;border-radius:12px;font-weight:700;flex:1 1 0;justify-content:center}
+.btn.o{background:#E75C04;border-color:#E75C04;color:#fff}.btn.o:hover{background:#c94f03;border-color:#c94f03}
+.btn.n{background:#0A3768;border-color:#0A3768;color:#fff}.btn.n:hover{background:#12497f}
+.edGrid{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:16px;align-items:start}
+#edCol{min-width:0}
+#prevCol{position:sticky;top:62px;max-height:calc(100vh - 70px);overflow:auto;min-width:0;border-radius:16px}
+#prevCol .card{margin-bottom:0}
+.expMain{display:flex;gap:10px}.expMore{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 12px}.expMore .btn{flex:1 1 auto;font-size:13px}
+.pBadge{margin-left:auto;border-radius:999px;padding:3px 11px;font-size:12px;font-weight:700;background:#e3eaf2;color:#0A3768}
+.pBadge.good{background:#d4edda;color:#155724}.pBadge.mid{background:#fff3cd;color:#856404}
+.prevbar{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.secLeg{display:flex;gap:5px;flex-wrap:wrap;margin-right:auto}.secLeg span{background:var(--sc);color:#fff;border-radius:99px;padding:2px 9px;font-size:11.5px;font-weight:700}
+#scaleBox{cursor:zoom-in}.scaler{position:relative}
+.secOv{position:absolute;pointer-events:none;border:2.5px solid var(--sc);border-radius:5px;box-sizing:border-box;background:color-mix(in srgb,var(--sc) 5%,transparent)}
+#secView{display:none}
+.wz .cb{padding-top:6px}
+.wstep{padding:12px 0;border-bottom:1px dashed #dbe3ee}.wstep:last-of-type{border-bottom:0}
+.wHead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.wNum{background:#0A3768;color:#fff;border-radius:50%;width:28px;height:28px;display:grid;place-items:center;font-weight:800;flex:0 0 28px}
+.wstep.ok .wNum{background:#E75C04}
+.wHead h3{margin:0;font-size:16.5px;color:#0A3768}.wHead .hint{margin-left:auto}
+.clsChips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.clsChip{border:2px solid var(--c);color:var(--c);background:#fff;border-radius:12px;padding:7px 12px;font-weight:700;font-size:14px;cursor:pointer}
+.clsChip.on{background:var(--c);color:#fff}.clsChip small{font-weight:500;opacity:.8;margin-left:5px}
+.clsChip.other{--c:#64748b;border-style:dashed;font-weight:600}
+.cycCards{display:flex;gap:8px;margin-top:10px;overflow-x:auto;padding:2px 2px 6px}
+.cycCard{flex:1 0 112px;text-align:left;border:2px solid #e2e8f0;background:#fff;border-radius:12px;padding:8px 9px;color:#0A3768;cursor:pointer}
+.cycCard .k{font-size:11.5px;font-weight:700;color:#64748b}.cycCard .a{font-weight:700;font-size:13.5px;margin:3px 0;display:flex;gap:5px;align-items:center}.cycCard .a svg{flex:0 0 18px}.cycCard .d{font-size:11.5px;color:#64748b}
+.cycCard.past{background:#f8fafc}.cycCard.past .a{color:#64748b}.cycCard.now{background:#fff7ed}.cycCard.now .k{color:#E75C04}
+.cycCard.on{border-color:#E75C04;box-shadow:0 0 0 2px #E75C04 inset}.cycCard.other{border-style:dashed}
+.seaCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px;margin-top:10px}
+.seaCard{min-height:72px;border:2px solid #e2e8f0;background:#fff;border-radius:12px;padding:6px 4px;text-align:center;color:#0A3768;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px}
+.seaCard:disabled{opacity:.45;cursor:not-allowed}
+.seaCard b{font-size:18px;line-height:1.1}.seaCard .d{font-size:11.5px}.seaCard .r{font-size:10px;color:#b45309;line-height:1.15}
+.seaCard.done{background:#eefaf1;border-color:#9fdcb2}.seaCard.today{background:#E75C04;border-color:#E75C04;color:#fff}.seaCard.today .r{color:#fff}
+.seaCard.on{box-shadow:0 0 0 3px #0A3768;border-color:#0A3768}
+.wObj{margin-top:12px;background:#f1f5f9;border-left:4px solid #E75C04;border-radius:10px;padding:10px 13px;font-size:14px;line-height:1.45}.wObj b{color:#0A3768}
+.manual{margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;padding:10px;border:1px dashed #cbd5e1;border-radius:10px;background:#fafcff}
+details.adv>summary{cursor:pointer;list-style:none;font-weight:700;color:#0A3768;padding:13px 16px;background:#fff;border-radius:14px;border:1px solid #dbe3ee;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+details.adv>summary::-webkit-details-marker{display:none}details.adv[open]>summary{background:#eef3f9}
+details.adv>summary .hint{font-weight:500;margin-left:6px}
+.advTools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px}
+.home{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:20px;align-items:start}
+.hTitle h1{margin:0;font:800 26px Poppins,"Segoe UI",sans-serif;color:#0A3768}.hTitle p{margin:3px 0 14px;color:#64748b}
+.sCard{background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(10,55,104,.1);display:flex;overflow:hidden;margin-bottom:12px;border:1px solid #e5ebf2}
+.sCard .bar{width:7px;background:var(--c);flex:0 0 7px}.sCard .tm{flex:0 0 92px;padding:14px 10px;border-right:1px solid #eef2f7;text-align:center;color:#0A3768}
+.sCard .tm b{display:block;font:800 21px Poppins,sans-serif}.sCard .tm span{font-size:12px;color:#64748b}
+.sCard .bd{flex:1;padding:12px 16px;min-width:0}
+.sCard .l1{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sCard .cl{font:800 17px Poppins,sans-serif;color:var(--c)}
+.tag{border-radius:99px;padding:2px 9px;font-size:12px;font-weight:700;background:#eef2f7;color:#0A3768}.tag.o{background:#E75C04;color:#fff}.tag.ok{background:#d4edda;color:#155724}.tag.w{background:#fff3cd;color:#856404}
+.sCard .ob{margin:7px 0 9px;font-size:14px;line-height:1.45}.sCard .ob b{color:#0A3768}
+.sCard .acts{display:flex;gap:7px;flex-wrap:wrap}.sCard .acts .btn{font-size:13px;padding:7px 11px}
+.sCard.now{border-color:#E75C04;box-shadow:0 0 0 2px #E75C04}
+.hBox{background:#fff;border-radius:16px;border:1px solid #e5ebf2;padding:14px 16px;margin-bottom:14px}
+.hBox h3{margin:0 0 10px;font-size:15.5px;color:#0A3768;display:flex;align-items:center;gap:6px}
+.wk{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}
+.wk .dh{font-size:11.5px;font-weight:700;color:#64748b;text-align:center;padding:3px 0;border-radius:6px}.wk .dh.td{background:#E75C04;color:#fff}
+.wk .col{display:flex;flex-direction:column;gap:4px}
+.wchip{border:0;border-left:4px solid var(--c);background:#f6f8fb;border-radius:6px;padding:4px 5px;text-align:left;font-size:11px;line-height:1.2;cursor:pointer;color:#0A3768;min-width:0;overflow:hidden}
+.wchip b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wchip.done{opacity:.6}
+.prog{height:9px;background:#eef2f7;border-radius:9px;overflow:hidden;margin:8px 0}.prog i{display:block;height:100%;background:#E75C04}
+.hEmpty{background:#fff;border-radius:16px;border:1px dashed #cbd5e1;padding:22px;text-align:center;color:#475569}
+.zoomDlg{position:fixed;inset:0;background:rgba(5,20,40,.78);z-index:200;overflow:auto;padding:20px;display:flex;justify-content:center;align-items:flex-start;cursor:zoom-out}
+.zoomDlg .zp{background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.4);flex:0 0 auto}
+.zoomDlg .zx{position:fixed;top:12px;right:16px;font-size:15px;z-index:201}
+.secV details{border:1px solid #e5ebf2;border-left:5px solid var(--sc);border-radius:10px;margin-bottom:8px;background:#fff}
+.secV summary{padding:10px 12px;font-weight:700;color:#0A3768;cursor:pointer}.secV .sb{padding:0 12px 10px;font-size:14px;line-height:1.45}
+.secV .sb p{margin:4px 0}.secV .sb img{max-width:100%;border:1px solid #e5ebf2;border-radius:8px;margin-top:6px}
+.cList .clS{border:1px solid #e5ebf2;border-radius:10px;padding:8px 10px;margin-bottom:8px;background:#fff}
+.cList .clH{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;line-height:1.4}.cList .clH b{background:#0A3768;color:#fff;border-radius:7px;padding:1px 7px;flex:0 0 auto}
+.cList table{width:100%;border-collapse:collapse;margin-top:6px;font-size:13px;table-layout:fixed}.cList td{border-top:1px solid #eef2f7;padding:6px 4px;vertical-align:top;word-break:break-word}
+.cList td.cl{width:30%;font-weight:700;border-left:4px solid var(--c);padding-left:6px}.cList td.dt{width:30%}.cList td.dt.pl{color:#7b8794}
+.cList td.rm{color:#b45309;font-size:12px}
+@media (max-width:1100px){.edGrid{grid-template-columns:minmax(0,1fr)}#prevCol{position:static;max-height:none;overflow:visible}.home{grid-template-columns:minmax(0,1fr)}.who{display:none}}
+@media (max-width:900px){.top .brand{width:auto;order:0}}
+@media (max-width:700px){
+ body{padding-bottom:76px}
+ .top{padding:7px 10px;gap:8px;position:sticky;top:0;z-index:30}
+ .bname{font-size:15px}.t3wm svg{height:15px}#bSide .lbl,.top .saved{display:none}
+ #mainNav.tabs{position:fixed;left:0;right:0;bottom:0;margin:0;background:#fff;border-top:1px solid #dbe3ee;z-index:60;padding:5px 0 9px;gap:0;box-shadow:0 -2px 10px rgba(10,55,104,.08)}
+ #mainNav .tab{flex:1 1 0;flex-direction:column;gap:1px;color:#64748b;background:none!important;font-size:10.5px;padding:3px 0;border-radius:0;min-width:0}
+ #mainNav .tab .ti{font-size:20px;line-height:1.1}#mainNav .tab .tl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+ #mainNav .tab.on{color:#E75C04}
+ .main{padding:10px!important}
+ .hTitle h1{font-size:21px}.sCard .tm{flex:0 0 66px;padding:10px 4px}.sCard .tm b{font-size:17px}.sCard .bd{padding:10px 11px}
+ .sCard .acts .btn{flex:1 1 auto}
+ .wk{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .seaCards{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}.seaCard{min-height:62px;padding:5px 2px}.seaCard b{font-size:16px}.seaCard .r{display:none}
+ .cycCard{flex:0 0 118px}
+ .expMain{flex-direction:column}.expMore .btn{flex:1 1 100%}
+ #secView{display:block;margin-top:12px}
+ .prevbar .secLeg{display:none}
+ .cahBar .btn{flex:1 1 45%}
+}`;
+(function(){const s=document.createElement("style");s.id="simpleCss";s.textContent=SIMPLE_CSS;document.head.appendChild(s)})();
+const SEC_COL={obj:"#2f6db5",ini:"#0f766e",fond:"#E75C04",fin:"#7b4fd0"};
+let HOME_DAY=null;            /* jour forcé (tests) ; sinon la date du jour */
+const homeDay=()=>HOME_DAY||today();
+const isPhone=()=>window.matchMedia&&window.matchMedia("(max-width:700px)").matches;
+function goTab(id){const b=document.querySelector(`#mainNav .tab[data-tab="${id}"]`);if(b)b.click()}
+function hm(h,add){const m=/^(\d{1,2}):?(\d\d)?/.exec(h||"");if(!m)return "";const t=(+m[1])*60+(+(m[2]||0))+(add||0);return `${String(Math.floor(t/60)).padStart(2,"0")}:${String(t%60).padStart(2,"0")}`}
+const sLab=(s,len)=>+s===1?"TO":+s===+len?"TB":String(s);
+const sLong=(s,len)=>+s===1?"Test d’observation (TO)":+s===+len?"Test bilan (TB)":`Séance ${s}/${len}`;
+function cutTxt(t,n){t=String(t||"");return t.length>n?t.slice(0,n-1)+"…":t}
+
+/* ---------- En-tête : logo TATABO3 + enseignant / établissement (profil) ---------- */
+function renderWho(){const w=$id("whoLbl");let P={};try{P=profLoad()}catch(e){}
+ if(w)w.innerHTML=`<b>${esc(P.ens||"")}</b>${esc(P.etab||"")}${P.annee?" · "+esc(P.annee):""}`;
+ const t=$id("t3wm");if(t&&!t.firstChild&&typeof T3_SVG!=="undefined")t.innerHTML=T3_SVG.wmD}
+
+/* ---------- Fiche en 3 étapes : Classe → Cycle → Séance ---------- */
+let WZ=null;const LS_WIZ="eps_wiz_v1";
+function wzCurCycle(){let P;try{P=profLoad()}catch(e){return 0}const d=homeDay();let k=P.cycles.findIndex(c=>c.du<=d&&d<=c.au);if(k<0)k=P.cycles.findIndex(c=>c.du>d);return k<0?(P.cycles.length?1:0):k+1}
+function wzLoad(){if(WZ)return WZ;try{WZ=JSON.parse(STORE.getItem(LS_WIZ)||"null")}catch(e){}
+ if(!WZ||typeof WZ!=="object"){WZ={cls:"",cyc:wzCurCycle(),niv:"",aps:"",mi:"",len:"10"};if(cur&&cur.aps)wzFromFiche(cur)}return WZ}
+function wzSave(){try{STORE.setItem(LS_WIZ,JSON.stringify(WZ))}catch(e){}}
+function wzFromFiche(f){if(!f||!(f.aps||"").trim())return;const P=profLoad(),W=WZ||(WZ={});
+ W.cls=clsOf(P,f.classe)?f.classe:(f.niveau?"_":"");W.niv=f.niveau||W.niv||"";
+ if(f.cyc&&P.cycles[+f.cyc-1])W.cyc=+f.cyc;else{const k=P.cycles.findIndex(c=>(CAH_APS[c.aps]||c.aps)===f.aps);W.cyc=k>=0&&W.cls!=="_"&&clsOf(P,f.classe)?k+1:0;W.aps=f.aps;W.mi=String(f.moduleIdx||"");W.len=String(f.cycleLen||10)}}
+function wzCtx(){const P=profLoad(),W=wzLoad();const cl=clsOf(P,W.cls),man=W.cls==="_";const niv=cl?cl.niv:(man?W.niv:"");
+ const cy=W.cyc>0?P.cycles[W.cyc-1]:null;let aps="",mi="",len=10;
+ if(cy){aps=CAH_APS[cy.aps]||cy.aps;mi=niv?String(+((cy.mods||{})[niv]||0)):"";len=+cy.len||10}else if(W.cyc===0){aps=W.aps||"";mi=String(W.mi??"");len=+W.len||10}
+ return{P,W,cl,man,niv,cy,aps,mi,len,ok1:!!OP[niv],ok2:!!(BANK[aps]&&(mi!==""||!OP[niv]))}}
+function wzMatch(f,c){return !!f&&f.aps===c.aps&&f.niveau===c.niv&&(c.cl?f.classe===c.cl.nom:!clsOf(c.P,f.classe))&&(c.cy?String(f.cyc)===String(c.W.cyc):!f.cyc)&&!!(objSentence(f)||hasFond(f))}
+function wizHTML(){let c;try{c=wzCtx()}catch(e){return ""}const{P,W,cl,man,niv,cy,aps,mi,len}=c,d=homeDay();
+ const famOpts=()=>{const by={};AUTO_APS.forEach(a=>{(by[BANK[a].fam]=by[BANK[a].fam]||[]).push(a)});return Object.entries(by).map(([f,l])=>`<optgroup label="${esc(f)}">${l.map(a=>`<option ${W.aps===a?"selected":""}>${esc(a)}</option>`).join("")}</optgroup>`).join("")};
+ const s1=P.classes.map(k=>`<button class="clsChip ${k.nom===W.cls?"on":""}" style="--c:${esc(k.col||"#0A3768")}" data-wcls="${esc(k.nom)}">${esc(k.nom)}<small>${esc(k.eff||"")}</small></button>`).join("")+`<button class="clsChip other ${man?"on":""}" data-wcls="_">Autre classe…</button>`;
+ const m1=man?`<div class="manual"><div class="f"><label class="lb">Niveau</label><select id="wNiv"><option value="">— Choisir —</option>${NIVEAUX.map(n=>`<option value="${n}" ${W.niv===n?"selected":""}>${esc(OP[n].label)}</option>`).join("")}</select></div></div>`:"";
+ const s2=P.cycles.map((k,i)=>{const st=k.au<d?"past":k.du<=d?"now":"";const a=CAH_APS[k.aps]||k.aps;return `<button class="cycCard ${st} ${W.cyc===i+1?"on":""}" data-wcyc="${i+1}"><div class="k">C${i+1}${st==="past"?" · terminé":st==="now"?" · en cours":" · à venir"}</div><div class="a">${apsIcon(a,(BANK[a]||{}).fam,"#0A3768",18)}${esc(apsTitle(k.aps))}</div><div class="d">${dFr(k.du).slice(0,5)} – ${dFr(k.au).slice(0,5)}</div></button>`}).join("")+`<button class="cycCard other ${W.cyc===0?"on":""}" data-wcyc="0"><div class="k">Hors répartition</div><div class="a">Autre APS…</div><div class="d">choix libre</div></button>`;
+ const op=OP[niv];
+ const m2=W.cyc===0?`<div class="manual"><div class="f"><label class="lb">APS</label><select id="wAps"><option value="">— Choisir —</option>${famOpts()}</select></div>
+  <div class="f"><label class="lb">Module</label><select id="wMod" ${op?"":"disabled"}><option value="">${op?"— Choisir —":"(choisir le niveau)"}</option>${op?op.modules.map((m,i)=>`<option value="${i}" ${String(W.mi)===String(i)?"selected":""}>${esc(m.n)} — ${esc(m.nom)}</option>`).join(""):""}</select></div>
+  <div class="f"><label class="lb">Nombre de séances</label><select id="wLen">${["10","12"].map(v=>`<option ${String(W.len||10)===v?"selected":""}>${v}</option>`).join("")}</select></div></div>`:"";
+ const ready=c.ok1&&c.ok2;const plan=cl&&cy?(cahPlan(P,W.cyc-1)[cl.nom]||[]):[];
+ const match=wzMatch(cur,c),sel=match?+cur.seance:0;
+ const s3=Array.from({length:len},(_,i)=>{const s=i+1,r=plan[i];let st="";if(r&&r.date)st=r.date===d?"today":(r.done||r.date<d)?"done":"";
+  return `<button class="seaCard ${st} ${s===sel?"on":""}" data-wsea="${s}" ${ready?"":"disabled"} title="${esc(sLong(s,len))}${r&&r.rem?" · "+esc(r.rem):""}"><b>${sLab(s,len)}</b><span class="d">${r&&r.date?dDay(r.date)+" "+dFr(r.date).slice(0,5):"&nbsp;"}</span><span class="d">${st==="done"?"✓ faite":st==="today"?"aujourd’hui":""}</span>${r&&r.rem?`<span class="r">${esc(cutTxt(r.rem,22))}</span>`:""}</button>`}).join("");
+ const r=sel&&plan[sel-1];
+ const obj=match?`<div class="wObj"><b>${esc(sLong(sel,len))}${r&&r.date?` · ${dDay(r.date)} ${dFr(r.date)}${r.h?" · "+esc(r.h):""}`:""} — objectif :</b> ${esc(objSentence(cur))}</div>`
+  :`<div class="wObj" style="border-left-color:#94a3b8"><span class="hint">${!c.ok1?"Étape 1 : choisissez la classe.":!c.ok2?"Étape 2 : choisissez le cycle"+(W.cyc===0?", l’APS et le module.":"."):"Étape 3 : cliquez une séance — la fiche est générée et s’affiche à droite."}</span></div>`;
+ const clsTxt=cl?`${esc(cl.nom)} · ${esc(cl.niv)} · ${esc(cl.eff)} élèves`:man&&op?esc(op.label):"";
+ return `<div class="card autoCard wz"><h2><span class="n">⚡</span>Préparer une séance<span class="sp">en 3 étapes</span></h2><div class="cb">
+ <div class="wstep ${c.ok1?"ok":""}"><div class="wHead"><span class="wNum">1</span><h3>Classe</h3><span class="hint">${clsTxt}</span></div><div class="clsChips">${s1}</div>${m1}</div>
+ <div class="wstep ${c.ok2?"ok":""}"><div class="wHead"><span class="wNum">2</span><h3>Cycle</h3><span class="hint">${cy?`${esc(apsTitle(cy.aps))} · ${len} séances${op&&mi!==""?" · "+esc((op.modules[+mi]||{}).n||""):""}`:""}</span></div><div class="cycCards">${s2}</div>${m2}</div>
+ <div class="wstep ${match?"ok":""}"><div class="wHead"><span class="wNum">3</span><h3>Séance</h3><span class="hint">${cl&&cy?"dates d’après l’emploi du temps et le cahier":""}</span></div><div class="seaCards">${s3}</div>${obj}</div>
+ </div></div>`}
+/* ouvre (ou génère) la fiche d’une séance ; o = {cls, cyc} pour forcer depuis la page Aujourd’hui */
+function wzOpen(s,o){o=o||{};const P=profLoad(),W=wzLoad();
+ if(o.cls!=null)W.cls=o.cls;if(o.cyc!=null)W.cyc=+o.cyc;const c=wzCtx();
+ if(!c.ok1){toast("Choisissez d’abord la classe (étape 1)");return null}
+ if(!c.ok2){toast("Choisissez d’abord le cycle (étape 2)");return null}
+ s=String(Math.min(+s||1,c.len));const same=x=>String(x.seance)===s&&wzMatch(x,c);
+ let f=fiches.find(same);
+ if(!f){f=(!(cur.aps||"").trim()&&!hasFond(cur)&&!objSentence(cur))?cur:null;if(!f){f=newFiche(cur);fiches.push(f)}
+  if(c.cl)ficheFromProfile(f,{cls:c.cl.nom});else{if(clsOf(P,f.classe))f.classe="";if(f.niveau!==c.niv){f.niveau=c.niv;f.moduleIdx="";f.module="";f.competences=[]}}
+  f.seance=s;
+  if(c.cy){ficheFromProfile(f,{cyc:W.cyc})}
+  else{f.cyc="";const op=OP[c.niv],m=op.modules[+c.mi];f.aps=c.aps;f.famille=BANK[c.aps].fam;f.cycleLen=String(c.len);f.moduleIdx=c.mi;f.module=m?m.nom:"";f.competences=m?m.comp.map(x=>({t:x,on:false})):[];f.oti=op.oti;f.otc=op.otc[f.famille]||""}
+  f.seance=s;f.variant=0;if(!genFiche(f,{n:+s,variant:0}))toast("Génération impossible pour cette APS");f.updated=Date.now()}
+ cur=f;wzSave();persist();renderList();renderEditor();renderPreview();return f}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-wcls],[data-wcyc],[data-wsea]");if(!t||!$id("pEdit").contains(t))return;const W=wzLoad();
+ if(t.dataset.wcls!=null){W.cls=t.dataset.wcls;wzSave();renderEditor()}
+ else if(t.dataset.wcyc!=null){W.cyc=+t.dataset.wcyc;wzSave();renderEditor()}
+ else if(t.dataset.wsea!=null){if(wzOpen(+t.dataset.wsea)&&isPhone()){const p=$id("prevCol");if(p)p.scrollIntoView({behavior:"smooth"})}}});
+document.addEventListener("change",e=>{const t=e.target,W=wzLoad();if(!["wNiv","wAps","wMod","wLen"].includes(t.id))return;
+ if(t.id==="wNiv"){W.niv=t.value;W.mi=""}else if(t.id==="wAps")W.aps=t.value;else if(t.id==="wMod")W.mi=t.value;else W.len=t.value;wzSave();renderEditor()});
+/* ouvrir une fiche depuis « Mes fiches » : les 3 étapes suivent */
+{const _as=afterSwitch;afterSwitch=function(){wzFromFiche(cur);wzSave();return _as.apply(this,arguments)}}
+
+/* ---------- Page « Aujourd’hui / Ma semaine » ---------- */
+function homeRows(P,from,to){const out=[];P.cycles.forEach((cy,ci)=>{let pl;try{pl=cahPlan(P,ci)}catch(e){return}
+ Object.entries(pl).forEach(([nom,rows])=>rows.forEach(r=>{if(r.date&&r.date>=from&&r.date<=to)out.push({ci,cy,classe:nom,niv:r.niv,s:+r.s,len:+cy.len||10,date:r.date,h:r.h||"",rem:r.rem||"",done:!!r.done})}))});
+ return out.sort((a,b)=>(a.date+hm(a.h)).localeCompare(b.date+hm(b.h)))}
+function weekDays(d){const x=isoD(d),k=(x.getUTCDay()+6)%7;return Array.from({length:6},(_,i)=>dIso(new Date(x.getTime()+(i-k)*864e5)))}
+function homeCard(P,r,now){const cl=clsOf(P,r.classe)||{},col=cl.col||"#0A3768",k=`${r.ci}|${esc(r.classe)}|${r.s}`;let obj="";try{obj=cahObj(P,r.ci,r.niv,r.s)}catch(e){}
+ const f=fiches.find(x=>x.classe===r.classe&&String(x.cyc)===String(r.ci+1)&&String(x.seance)===String(r.s)&&objSentence(x));
+ return `<div class="sCard ${now?"now":""}" style="--c:${esc(col)}"><div class="bar"></div><div class="tm"><b>${esc(hm(r.h))||"—"}</b><span>${r.h?"→ "+hm(r.h,60):""}</span></div><div class="bd">
+ <div class="l1"><span class="cl">${esc(r.classe)}</span><span class="tag">${esc(cl.eff||"")} élèves</span><span class="tag ${r.s===1||r.s===r.len?"o":""}">${esc(sLong(r.s,r.len))}</span>${r.done?`<span class="tag ok">✓ faite</span>`:""}${f?`<span class="tag ok">fiche prête</span>`:""}</div>
+ <div class="hint" style="margin-top:3px">${esc(apsTitle(r.cy.aps))} · Cycle ${r.ci+1}</div>
+ <div class="ob"><b>Objectif :</b> ${esc(obj)}</div>${r.rem?`<div class="hint" style="color:#b45309;margin:-4px 0 8px">⚠ ${esc(r.rem)}</div>`:""}
+ <div class="acts"><button class="btn o" data-h="open" data-k="${k}">📄 Ouvrir la fiche</button><button class="btn" data-h="print" data-k="${k}">🖨 Imprimer</button><button class="btn" data-h="word" data-k="${k}">⬇ Word</button><button class="btn ghost" data-h="done" data-k="${k}">${r.done?"↺ Non faite":"✓ Séance faite"}</button><button class="btn ghost" data-h="rem" data-k="${k}">✎ Remarque</button></div></div></div>`}
+function renderHome(){const pane=$id("pHome");if(!pane)return;let P;try{P=profLoad()}catch(e){pane.innerHTML="";return}
+ const d=homeDay(),wk=weekDays(d),rows=homeRows(P,wk[0],wk[5]),tod=rows.filter(r=>r.date===d);
+ const D=isoD(d),long=`${DAYS[(D.getUTCDay()+6)%7]||"Dimanche"} ${D.getUTCDate()} ${["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"][D.getUTCMonth()]} ${D.getUTCFullYear()}`;
+ let main;
+ if(tod.length)main=tod.map((r,i)=>homeCard(P,r,false)).join("");
+ else{const nx=homeRows(P,dIso(new Date(D.getTime()+864e5)),dIso(new Date(D.getTime()+60*864e5)));const n=nx[0];
+  main=`<div class="hEmpty">Aucune séance d’EPS aujourd’hui.${n?`<br><br><b>Prochaine séance :</b> ${dDay(n.date)} ${dFr(n.date)} ${esc(n.h)}</div>`+homeCard(P,n,false):"</div>"}`}
+ const wkHTML=`<div class="wk">${wk.map(x=>`<div class="col"><div class="dh ${x===d?"td":""}">${dDay(x)} ${dFr(x).slice(0,5)}</div>${rows.filter(r=>r.date===x).map(r=>`<button class="wchip ${r.done?"done":""}" style="--c:${esc((clsOf(P,r.classe)||{}).col||"#0A3768")}" data-h="open" data-k="${r.ci}|${esc(r.classe)}|${r.s}" title="${esc(r.classe)} · ${esc(sLong(r.s,r.len))}"><b>${esc(r.classe)}</b>${esc(hm(r.h))} · ${sLab(r.s,r.len)}</button>`).join("")}</div>`).join("")}</div>`;
+ const ciNow=P.cycles.findIndex(c=>c.du<=d&&d<=c.au),ciNext=P.cycles.findIndex(c=>c.du>d);
+ const nxt=ciNext>=0?P.cycles[ciNext]:null;
+ let done=0,tot=0;if(ciNow>=0)Object.values(cahPlan(P,ciNow)).forEach(rs=>rs.forEach(r=>{tot++;if(r.done||(r.date&&r.date<=d))done++}));
+ const cyN=ciNow>=0?P.cycles[ciNow]:null;
+ pane.innerHTML=`<div class="home"><div class="hMain"><div class="hTitle"><h1>Aujourd’hui · ${esc(long)}</h1><p>${tod.length} séance${tod.length>1?"s":""} d’EPS · d’après votre emploi du temps et le cahier de texte${cyN?` · Cycle ${ciNow+1} : ${esc(apsTitle(cyN.aps))}`:""}</p></div><div id="homeToday">${main}</div></div>
+ <div class="hSide"><div class="hBox"><h3>🗓 Ma semaine <span class="hint" style="margin-left:auto">${dFr(wk[0]).slice(0,5)} – ${dFr(wk[5]).slice(0,5)}</span></h3>${wkHTML}</div>
+ ${nxt?`<div class="hBox"><h3>⏭ À venir</h3><div><b>Cycle ${ciNext+1} : ${esc(apsTitle(nxt.aps))}</b><div class="hint">du ${dFr(nxt.du)} au ${dFr(nxt.au)} · ${nxt.len||10} séances</div></div><button class="btn" style="margin-top:9px" data-h="cyc" data-k="${ciNext+1}">Préparer ce cycle →</button></div>`:""}
+ ${cyN?`<div class="hBox"><h3>📒 Cahier de texte</h3><div>Cycle ${ciNow+1} : <b>${done}/${tot}</b> séances effectuées</div><div class="prog"><i style="width:${tot?Math.round(done/tot*100):0}%"></i></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn" data-h="cah">Ouvrir le cahier</button><button class="btn ghost" data-h="copy" data-k="${ciNow}">📋 Copier les objectifs (TATABO3)</button></div></div>`:""}
+ </div></div>`}
+function homeSetReg(P,ci,cls,s,patch){const k=`${ci+1}|${cls}|${s}`;P.reg=P.reg||{};const o=Object.assign({},P.reg[k]||{},patch);Object.keys(o).forEach(x=>{if(o[x]===""||o[x]==null)delete o[x]});if(Object.keys(o).length)P.reg[k]=o;else delete P.reg[k];profSave(P)}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-h]");if(!t||!$id("pHome").contains(t))return;const a=t.dataset.h,k=(t.dataset.k||"").split("|"),P=profLoad();
+ if(a==="cah"){goTab("pCah");return}
+ if(a==="cyc"){const W=wzLoad();W.cyc=+k[0];wzSave();renderEditor();goTab("pEdit");return}
+ if(a==="copy"){const ok=await copyText(cahTSV(cahData(P,[+k[0]])));toast(ok?"Objectifs copiés : collez-les dans TATABO3":"Copie impossible ici");return}
+ const ci=+k[0],cls=k[1],s=+k[2];
+ if(a==="open"){if(wzOpen(s,{cls,cyc:ci+1}))goTab("pEdit");return}
+ if(a==="print"||a==="word"){if(wzOpen(s,{cls,cyc:ci+1}))$id(a==="print"?"bPrint":"bWord").click();return}
+ const row=(cahPlan(P,ci)[cls]||[])[s-1]||{};
+ if(a==="done"){homeSetReg(P,ci,cls,s,{date:row.done?"":(row.date||homeDay())});renderHome();toast(row.done?"Séance remise « prévue »":"Séance notée comme faite dans le cahier");return}
+ if(a==="rem"){const v=await uiDialog({title:`Remarque · ${cls} · ${sLong(s,(P.cycles[ci]||{}).len||10)}`,msg:"Ex. : absence, réunion, intempéries… (vide = aucune)",input:row.rem||"",okLabel:"Enregistrer"});if(v==null||v===false)return;homeSetReg(P,ci,cls,s,{rem:String(v).trim()});renderHome()}});
+
+/* ---------- Aperçu : couleurs des sections, badge, zoom, vue par sections ---------- */
+function prevDecorate(){const pg=$id("page"),sc=$id("scaler");if(!pg||!sc)return;sc.querySelectorAll(".secOv").forEach(x=>x.remove());
+ const has=!!(cur&&(objSentence(cur)||hasFond(cur)));
+ const b=$id("pBadge");if(b){if(!has){b.className="pBadge";b.textContent="Choisissez une séance"}else{let s={ok:0,tot:0};try{s=cohScore(checkCoherence(cur))}catch(e){}const ok=s.tot&&s.ok===s.tot;b.className="pBadge "+(ok?"good":"mid");b.textContent=ok?"✓ cohérence OK · 1 page A4":`⚠ cohérence ${s.ok}/${s.tot} · 1 page A4`}}
+ const lg=$id("secLeg");if(lg)lg.innerHTML=has?[["obj","Objectifs"],["ini","Initiale"],["fond","Fondamentale"],["fin","Finale"]].map(([k,l])=>`<span style="--sc:${SEC_COL[k]}">${l}</span>`).join(""):"";
+ const aA=$id("aAlt");if(aA)aA.disabled=!(cur&&BANK[cur.aps]&&OP[cur.niveau]);
+ ["bPrint","bWord"].forEach(id=>{const x=$id(id);if(x)x.disabled=!has});
+ renderSecView(has);
+ if(!has)return;const R=sc.getBoundingClientRect();if(!R.width)return;const k=R.width/sc.offsetWidth||1;
+ const box=(el,col)=>{if(!el)return;const r=el.getBoundingClientRect();if(!r.width)return;const o=document.createElement("div");o.className="secOv";o.style.cssText=`--sc:${col};left:${(r.left-R.left)/k-2}px;top:${(r.top-R.top)/k-2}px;width:${r.width/k+4}px;height:${r.height/k+4}px`;sc.appendChild(o)};
+ const tabs=[...pg.querySelectorAll("table")];box(tabs.find(t=>/Objectif/i.test(t.textContent)&&!/Fondamentale/.test(t.textContent)),SEC_COL.obj);
+ const rows=[...pg.querySelectorAll("tr")];[["ini",/^Initiale/],["fond",/^Fondamentale/],["fin",/^Finale/]].forEach(([key,re])=>box(rows.find(tr=>tr.firstElementChild&&re.test(tr.firstElementChild.textContent.trim())),SEC_COL[key]))}
+function renderSecView(has){const v=$id("secView");if(!v)return;if(!has||!cur){v.innerHTML="";return}const f=cur,P=f.phases,L=(l,x)=>String(x||"").trim()?`<p><b>${l} :</b> ${esc(x).replace(/\n/g,"<br>")}</p>`:"";
+ const img=k=>P[k]&&P[k].schema?`<img src="${P[k].schema}" alt="Schéma" loading="lazy">`:"";
+ const ph=(k,t,body,open)=>`<details style="--sc:${SEC_COL[k]}" ${open?"open":""}><summary>${t}${P[k]&&P[k].duree?` · ${esc(P[k].duree)}`:""}</summary><div class="sb">${body}</div></details>`;
+ const fd=P.fond;
+ v.innerHTML=`<div class="secV"><h3 style="margin:4px 0 8px;color:#0A3768;font-size:15px">La fiche par sections</h3>
+ ${ph("obj","🎯 Objectifs",L("Objectif de la séance",objSentence(f))+L("Objectif du cycle",f.objSeq)+L("OTC",f.otc),true)}
+ ${ph("ini","Phase initiale",L("But",P.ini.but)+L("Contenu",P.ini.contenu)+L("Consignes",P.ini.consignes)+L("Critères",P.ini.criteres)+img("ini"))}
+ ${ph("fond","Phase fondamentale",L("But",fd.but)+(fd.situations||[]).map((s,i)=>`<p style="margin-top:8px"><b style="color:#E75C04">Situation ${i+1}${s.titre?" : "+esc(s.titre):""}</b></p>`+L("But",s.but)+L("Organisation",s.orga)+L("Conditions",s.conditions)+L("Critères de réussite",s.criteres)+L("Pour simplifier",s.simplifier)+L("Pour complexifier",s.complexifier)).join("")+L("Consignes de sécurité",fd.consSecu)+L("Critères quantitatifs",fd.critQuant)+L("Critères qualitatifs",fd.critQual)+img("fond"))}
+ ${ph("fin","Phase finale",L("But",P.fin.but)+L("Contenu",P.fin.contenu)+L("Consignes",P.fin.consignes)+img("fin"))}</div>`}
+function openZoom(){const pg=$id("page");if(!pg||!pg.innerHTML.trim())return;const d=document.createElement("div");d.className="zoomDlg";d.id="zoomDlg";
+ d.innerHTML=`<button class="btn zx">✕ Fermer</button><div class="zp" style="width:${pg.offsetWidth||1123}px">${pg.outerHTML.replace(' id="page"','')}</div>`;
+ const close=()=>{d.remove();document.removeEventListener("keydown",esk)},esk=e=>{if(e.key==="Escape")close()};d.onclick=close;document.addEventListener("keydown",esk);document.body.appendChild(d)}
+{const _rp=renderPreview;renderPreview=function(){const r=_rp.apply(this,arguments);try{prevDecorate()}catch(e){console.warn(e)}return r}}
+{const _fp=fitPreview;fitPreview=function(){const r=_fp.apply(this,arguments);try{prevDecorate()}catch(e){}return r}}
+if($id("bReal"))$id("bReal").onclick=openZoom;
+if($id("scaleBox"))$id("scaleBox").addEventListener("click",openZoom);
+
+/* ---------- Cahier de texte : liste sur téléphone ---------- */
+function cahListHTML(P,data){return `<div class="cList">${data.map(d=>`<div class="card"><h2><span class="n">C${d.ci+1}</span>${esc(apsTitle(d.aps))}<span class="sp">${esc(d.niv)} · ${dFr(d.cy.du).slice(0,5)}–${dFr(d.cy.au).slice(0,5)}</span></h2><div class="cb">${d.seances.map(se=>`<div class="clS"><div class="clH"><b>${esc(se.lab[0])}</b><span style="flex:1">${esc(se.obj)}</span><button class="ccopy" data-copy="${esc(se.obj)}" title="Copier l’objectif">📋</button></div>
+ <table>${se.rows.map(r=>`<tr><td class="cl" style="--c:${esc((clsOf(P,r.classe)||{}).col||"#0A3768")}">${esc(r.classe)}</td><td class="dt ${r.done||(r.date&&r.date<=today())?"":"pl"}" data-k="${d.ci+1}|${esc(r.classe)}|${r.s}">${r.date?dDay(r.date)+" "+dFr(r.date).slice(0,5):"—"}</td><td class="rm" data-k="${d.ci+1}|${esc(r.classe)}|${r.s}">${esc(r.rem||"")}</td></tr>`).join("")}</table></div>`).join("")}</div></div>`).join("")}</div>`}
+{const _rc=renderCahier;renderCahier=function(){const r=_rc.apply(this,arguments);if(isPhone()){const pv=$id("pCah").querySelector(".cahPrev");if(pv){const P=profLoad();pv.outerHTML=cahListHTML(P,cahData(P,CAH_UI.ci==="all"?null:[+CAH_UI.ci],CAH_UI.niv==="all"?null:[CAH_UI.niv]))}
+ $id("pCah").querySelectorAll(".cList td.dt,.cList td.rm").forEach(td=>{td.style.cursor="pointer"})}return r}}
+
+/* ---------- navigation / profil ---------- */
+function onTab(id){if(id==="pHome")renderHome();if(id==="pEdit"){renderEditor();fitPreview()}}
+{const _ps=profSave;profSave=function(){const r=_ps.apply(this,arguments);try{renderWho();if($id("pHome").classList.contains("on"))renderHome()}catch(e){}return r}}
+window.addEventListener("resize",()=>{clearTimeout(window._phT);window._phT=setTimeout(()=>{if($id("pCah").classList.contains("on")&&typeof renderCahier==="function")renderCahier()},250)});
 /* ===================== DÉMARRAGE ===================== */
 initBanner();
 try{loadAll()}catch(e){fiches=[];cur=newFiche();fiches.push(cur)}
 renderList();renderEditor();renderPreview();persist();
+
+try{renderWho();renderHome()}catch(e){console.warn(e)}
 </script>
 </body></html>
